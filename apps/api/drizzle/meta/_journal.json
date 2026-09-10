@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788943021979,
+      "tag": "0000_cooing_black_tom",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788949236876,
+      "tag": "0001_broad_serpent_society",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789003416849,
+      "tag": "0002_loving_cannonball",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789006405616,
+      "tag": "0003_add-reception-confirm-permission",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789024364672,
+      "tag": "0004_kind_captain_cross",
+      "breakpoints": true
+    }
+  ]
+}

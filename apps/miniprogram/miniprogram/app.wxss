@@ -1,0 +1,10 @@
+page {
+  min-height: 100%;
+  color: #202124;
+  background: #f5f3ef;
+  font-family: sans-serif;
+}
+
+button::after {
+  border: 0;
+}

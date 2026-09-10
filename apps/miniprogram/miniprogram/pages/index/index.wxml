@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="brand">得闲 SPA</view>
+  <view class="title">{{ status }}</view>
+  <view class="description">
+    当前已完成小程序工程骨架。预约功能将在核心技术设计复核后接入。
+  </view>
+</view>

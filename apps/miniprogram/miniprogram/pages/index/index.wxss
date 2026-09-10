@@ -1,0 +1,26 @@
+.page {
+  min-height: 100vh;
+  padding: 96rpx 48rpx;
+  box-sizing: border-box;
+}
+
+.brand {
+  color: #597263;
+  font-size: 26rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+}
+
+.title {
+  margin-top: 24rpx;
+  font-size: 52rpx;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.description {
+  margin-top: 28rpx;
+  color: #667069;
+  font-size: 30rpx;
+  line-height: 1.7;
+}

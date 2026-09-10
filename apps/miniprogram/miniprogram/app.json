@@ -1,0 +1,12 @@
+{
+  "pages": ["pages/index/index"],
+  "window": {
+    "navigationBarTitleText": "得闲 SPA",
+    "navigationBarBackgroundColor": "#f5f3ef",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f3ef"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

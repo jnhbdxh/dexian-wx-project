@@ -1,0 +1,13 @@
+{
+  "name": "@dexian/miniprogram",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"console.log('Mini program behavior tests start with the first feature')\""
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "5.2.3",
+    "typescript": "5.9.3"
+  }
+}

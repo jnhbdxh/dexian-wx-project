@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+.codex_tmp/
+*.log
+*.tsbuildinfo
+.DS_Store
+apps/miniprogram/project.private.config.json

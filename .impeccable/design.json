@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-10T16:18:53+08:00",
+  "title": "Design System: 得闲 SPA 运营后台",
+  "extensions": {
+    "colorMeta": {
+      "brand": {
+        "role": "primary",
+        "displayName": "门店森林绿",
+        "canonical": "#286444",
+        "tonalRamp": [
+          "#102a1d",
+          "#173f2b",
+          "#286444",
+          "#347653",
+          "#619078",
+          "#91ad9d",
+          "#bdcfc4",
+          "#eef4f0"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "安静画布",
+        "canonical": "#f2f5f2",
+        "tonalRamp": [
+          "#203128",
+          "#43534a",
+          "#647168",
+          "#9db2a4",
+          "#d9e1dc",
+          "#e8ede9",
+          "#f2f5f2",
+          "#ffffff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "页面标题",
+        "purpose": "每个运营工作台唯一的一级标题。"
+      },
+      "body": {
+        "displayName": "运营正文",
+        "purpose": "状态说明、对象详情和恢复指引。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "panel-ambient",
+        "value": "0 18px 48px rgb(35 63 47 / 8%)",
+        "purpose": "区分主要工作面板与浅色页面画布。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-state",
+        "value": "160ms ease-out",
+        "purpose": "列表选择、输入聚焦和悬停状态过渡。"
+      }
+    ],
+    "breakpoints": [
+      { "name": "workbench-stack", "value": "820px" },
+      { "name": "compact-mobile", "value": "560px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "执行当前页面唯一主要业务动作。",
+      "html": "<button class=\"ds-btn-primary\">确认并立即生效</button>",
+      "css": ".ds-btn-primary { min-height: 44px; padding: 10px 20px; color: #fff; background: #286444; border: 0; border-radius: 9px; font: 600 14px 'PingFang SC', 'Microsoft YaHei', sans-serif; } .ds-btn-primary:hover { background: #347653; } .ds-btn-primary:focus-visible { outline: 3px solid rgb(52 118 83 / 25%); outline-offset: 3px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "description": "切换工作台、重试和退出等次要动作。",
+      "html": "<button class=\"ds-btn-secondary\">刷新工作台</button>",
+      "css": ".ds-btn-secondary { min-height: 40px; padding: 8px 12px; color: #286444; background: #fff; border: 1px solid #d9e1dc; border-radius: 9px; font: 500 14px 'PingFang SC', 'Microsoft YaHei', sans-serif; } .ds-btn-secondary:hover { border-color: #91ad9d; } .ds-btn-secondary:focus-visible { outline: 3px solid rgb(52 118 83 / 25%); outline-offset: 3px; }"
+    },
+    {
+      "name": "Operational Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "门店操作表单的文本与时间输入。",
+      "html": "<input class=\"ds-input\" value=\"已确认的个人请假\" />",
+      "css": ".ds-input { width: 100%; min-height: 44px; padding: 8px 11px; color: #24372c; background: #fbfcfb; border: 1px solid #cfd9d2; border-radius: 9px; font: 400 14px 'PingFang SC', 'Microsoft YaHei', sans-serif; } .ds-input:hover { border-color: #9db2a4; } .ds-input:focus-visible { outline: 3px solid rgb(52 118 83 / 25%); outline-offset: 3px; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "status-positive",
+      "description": "以文字和语义色共同表达可登记或待跟进状态。",
+      "html": "<span class=\"ds-status-chip\">待人工跟进</span>",
+      "css": ".ds-status-chip { display: inline-block; padding: 5px 9px; color: #8a4a0f; background: #fff1df; border-radius: 999px; font: 700 12px 'PingFang SC', 'Microsoft YaHei', sans-serif; }"
+    },
+    {
+      "name": "Workbench Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "承载一个完整运营任务或对象详情。",
+      "html": "<section class=\"ds-panel\"><strong>已确认接待冲突</strong><p>等待人工跟进</p></section>",
+      "css": ".ds-panel { padding: 24px; color: #173f2b; background: #fff; border: 1px solid #d9e1dc; border-radius: 16px; box-shadow: 0 18px 48px rgb(35 63 47 / 8%); font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; } .ds-panel p { margin: 6px 0 0; color: #647168; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "安静清楚的门店值班台",
+    "overview": "界面服务于营业现场的操作人员，以低干扰的浅色画布、明确的深绿色主动作和紧凑但不拥挤的信息层级，让状态、影响和下一步在数秒内可见。品牌表达来自稳重的绿色、克制的圆角和细致的反馈文案，不依赖装饰性图形。",
+    "keyCharacteristics": [
+      "操作名称直接说明业务结果。",
+      "风险说明紧邻高影响操作，成功、待处理和故障使用不同语义色。",
+      "主要工作区在桌面并排，在窄屏按操作顺序纵向展开。"
+    ],
+    "rules": [
+      {
+        "name": "Semantic Accent Rule",
+        "body": "绿色表示可执行或已生效，橙色表示需要关注但业务仍然保留，红色表示失败或无法继续。",
+        "section": "colors"
+      },
+      {
+        "name": "Action Order Rule",
+        "body": "窄屏先呈现需要填写或判断的动作，再呈现受影响对象和跟进信息。",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do 以真实业务结果命名按钮。",
+      "Do 在同一视区展示对象、状态、影响数量和下一步。",
+      "Do 将服务端事实与可重试凭据保留到明确结果返回。"
+    ],
+    "donts": [
+      "Don't 把待人工跟进写成已解决。",
+      "Don't 用颜色替代文字状态。",
+      "Don't 为简单操作增加模态框或额外步骤。"
+    ]
+  }
+}
