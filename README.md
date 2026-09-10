@@ -21,7 +21,7 @@
 6. 启动 API：`pnpm dev:api`
 7. 启动管理后台：`pnpm dev:admin`
 
-小程序目录可由微信开发者工具直接导入；当前 AppID 以 `apps/miniprogram/project.config.json` 为准，发布前请再核对它属于目标小程序账号。
+小程序目录可由微信开发者工具直接导入；仓库配置使用游客 AppID。首次导入后，请在开发者工具的“详情 → 基本信息”中填写真实 AppID，工具会将它保存在已被 Git 忽略的 `apps/miniprogram/project.private.config.json` 中。发布前请再核对它属于目标小程序账号。
 
 ## 验证命令
 
