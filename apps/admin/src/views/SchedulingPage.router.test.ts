@@ -144,4 +144,48 @@ describe("leave recovery with Vue Router", () => {
       expect(call).toEqual(originalCall);
     expect(sessionStorage.getItem("dexian:unverified-leave")).toBeNull();
   });
+
+  it.each([
+    new ApiRequestError(401, "AUTH_REQUIRED", "请先登录", "r-401", {}),
+    new ApiRequestError(403, "CSRF_INVALID", "页面状态失效", "r-403", {}),
+  ])(
+    "allows the login redirect when the first request loses identity",
+    async (error) => {
+      mocks.getLeaveWorkbench.mockResolvedValue(pageData());
+      mocks.createLeave.mockRejectedValue(error);
+      const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+          { path: "/scheduling", component: SchedulingPage },
+          { path: "/login", component: LoginPage },
+        ],
+      });
+      await router.push("/scheduling");
+      await router.isReady();
+      const wrapper = mount(RouterView, {
+        global: {
+          plugins: [router],
+          stubs: {
+            ElButton: ElButtonStub,
+            ElForm: ElFormStub,
+            ElFormItem: { template: "<label><slot /></label>" },
+            ElInput: ElInputStub,
+            ElResult: true,
+            ElSkeleton: true,
+          },
+        },
+      });
+      await flushPromises();
+      await wrapper.find("#leave-start").setValue("2026-09-11T13:00");
+      await wrapper.find("#leave-end").setValue("2026-09-11T14:00");
+      await wrapper.find("#leave-reason").setValue("首次提交即身份失效");
+      await wrapper.find(".leave-form").trigger("submit");
+      await flushPromises();
+
+      expect(router.currentRoute.value.fullPath).toBe(
+        "/login?redirect=/scheduling",
+      );
+      expect(sessionStorage.getItem("dexian:unverified-leave")).toBeNull();
+    },
+  );
 });

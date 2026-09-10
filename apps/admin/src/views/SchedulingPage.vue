@@ -7,7 +7,6 @@ import {
   createLeave,
   getLeaveWorkbench,
   logout,
-  type CreateLeaveInput,
   type CreateLeaveResult,
   type LeaveConflict,
   type LeaveWorkbench,
@@ -19,19 +18,18 @@ import {
 } from "../lib/leave-error";
 import {
   clearUnverifiedLeave,
+  isLeaveRecoveryOwner,
   isoToShanghaiLocal,
   loadUnverifiedLeave,
   saveUnverifiedLeave,
+  type RecoverableLeaveAttempt,
 } from "../lib/leave-recovery";
 import {
   classifyOverviewFailure,
   type OverviewFailure,
 } from "../lib/overview-error";
 
-interface LeaveAttempt {
-  input: CreateLeaveInput;
-  key: string;
-}
+type LeaveAttempt = RecoverableLeaveAttempt;
 
 type DisplayLeaveFailure = Exclude<LeaveFailure, { kind: "login" }>;
 
@@ -50,6 +48,9 @@ const resultUnverified = ref(false);
 const successfulResult = ref<CreateLeaveResult>();
 const selectedConflictId = ref("");
 const conflictSection = ref<HTMLElement>();
+const pendingRecovery = ref<LeaveAttempt>();
+const recoveryOwnedByAnotherUser = ref(false);
+const authRedirecting = ref(false);
 
 const therapistId = ref("");
 const startLocal = ref("");
@@ -62,8 +63,25 @@ const formLocked = computed(
   () =>
     submitting.value ||
     resultUnverified.value ||
+    recoveryOwnedByAnotherUser.value ||
     leaveFailure.value?.failure.action === "retry",
 );
+
+const unavailableRecoveryTherapist = computed(() => {
+  const attempt = leaveFailure.value?.attempt;
+  if (
+    !resultUnverified.value ||
+    !attempt ||
+    workbench.value?.therapists.some(
+      (therapist) => therapist.id === attempt.input.therapistResourceId,
+    )
+  )
+    return undefined;
+  return {
+    id: attempt.input.therapistResourceId,
+    name: attempt.therapistName,
+  };
+});
 
 const selectedConflict = computed<LeaveConflict | undefined>(
   () =>
@@ -86,6 +104,7 @@ async function loadWorkbench(
   pageFailure.value = undefined;
   try {
     workbench.value = await getLeaveWorkbench();
+    restoreUnverifiedAttempt();
     const requestedConflict = options.focusConflictId;
     if (
       requestedConflict &&
@@ -102,10 +121,11 @@ async function loadWorkbench(
       selectedConflictId.value = workbench.value.conflicts[0]?.conflictId ?? "";
     }
     if (
-      !therapistId.value ||
-      !workbench.value.therapists.some(
-        (therapist) => therapist.id === therapistId.value,
-      )
+      !resultUnverified.value &&
+      (!therapistId.value ||
+        !workbench.value.therapists.some(
+          (therapist) => therapist.id === therapistId.value,
+        ))
     ) {
       therapistId.value = workbench.value.therapists[0]?.id ?? "";
     }
@@ -167,12 +187,17 @@ function buildAttempt(): LeaveAttempt | undefined {
   const startAt = shanghaiLocalToIso(startLocal.value);
   const endAt = shanghaiLocalToIso(endLocal.value);
   const reason = reasonPrivate.value.trim();
+  const user = workbench.value?.user;
+  const therapist = workbench.value?.therapists.find(
+    (item) => item.id === therapistId.value,
+  );
   if (!therapistId.value) formError.value = "请选择请假的美容师。";
   else if (!startAt || !endAt) formError.value = "请填写完整的开始和结束时间。";
   else if (Date.parse(endAt) <= Date.parse(startAt))
     formError.value = "结束时间必须晚于开始时间。";
   else if (!reason) formError.value = "请填写仅供门店内部查看的请假原因。";
-  if (formError.value || !startAt || !endAt) return undefined;
+  if (formError.value || !startAt || !endAt || !user || !therapist)
+    return undefined;
   return {
     input: {
       therapistResourceId: therapistId.value,
@@ -181,6 +206,9 @@ function buildAttempt(): LeaveAttempt | undefined {
       reasonPrivate: reason,
     },
     key: crypto.randomUUID(),
+    staffUserId: user.id,
+    storeId: user.storeId,
+    therapistName: therapist.name,
   };
 }
 
@@ -206,6 +234,7 @@ async function submitLeave(retryAttempt?: LeaveAttempt) {
     const failure = classifyLeaveFailure(error);
     if (failure.kind === "login") {
       if (!wasUnverified) clearUnverifiedLeave();
+      authRedirecting.value = true;
       await router.replace({
         path: "/login",
         query: { redirect: "/scheduling" },
@@ -329,8 +358,15 @@ async function signOut() {
 }
 
 function restoreUnverifiedAttempt() {
-  const attempt = loadUnverifiedLeave();
-  if (!attempt) return;
+  const attempt = pendingRecovery.value;
+  const user = workbench.value?.user;
+  if (!attempt || !user) return;
+  if (!isLeaveRecoveryOwner(attempt, user)) {
+    recoveryOwnedByAnotherUser.value = true;
+    return;
+  }
+  pendingRecovery.value = undefined;
+  recoveryOwnedByAnotherUser.value = false;
   therapistId.value = attempt.input.therapistResourceId;
   startLocal.value = isoToShanghaiLocal(attempt.input.startAt);
   endLocal.value = isoToShanghaiLocal(attempt.input.endAt);
@@ -355,12 +391,12 @@ function warnBeforeReload(event: BeforeUnloadEvent) {
 
 onBeforeRouteLeave((to) => {
   if (!submitting.value && !resultUnverified.value) return true;
-  if (resultUnverified.value && to.path === "/login") return true;
+  if (authRedirecting.value && to.path === "/login") return true;
   return false;
 });
 
 onMounted(() => {
-  restoreUnverifiedAttempt();
+  pendingRecovery.value = loadUnverifiedLeave();
   window.addEventListener("beforeunload", warnBeforeReload);
   void loadWorkbench({ allowUnverified: true });
 });
@@ -451,6 +487,20 @@ onBeforeUnmount(() => {
           </p>
         </div>
 
+        <div
+          v-if="recoveryOwnedByAnotherUser"
+          class="leave-submit-alert"
+          role="alert"
+        >
+          <div>
+            <strong>请切换回原账号核实请假</strong>
+            <p>
+              当前浏览器保存了另一名员工尚未核实的请假。为避免重复登记，原内部原因已隐藏，请由原员工登录后继续核实。
+            </p>
+          </div>
+          <el-button plain @click="signOut">切换账号</el-button>
+        </div>
+
         <form class="leave-form" @submit.prevent="submitLeave()">
           <label class="form-field" for="leave-therapist">
             <span>美容师</span>
@@ -460,6 +510,15 @@ onBeforeUnmount(() => {
               :disabled="formLocked"
             >
               <option value="" disabled>请选择美容师</option>
+              <option
+                v-if="unavailableRecoveryTherapist"
+                :value="unavailableRecoveryTherapist.id"
+                disabled
+              >
+                {{
+                  unavailableRecoveryTherapist.name
+                }}（已停用，仅用于核实原请求）
+              </option>
               <option
                 v-for="therapist in workbench.therapists"
                 :key="therapist.id"
@@ -555,11 +614,13 @@ onBeforeUnmount(() => {
             "
           >
             {{
-              resultUnverified
-                ? "请先核实结果"
-                : workbench.canCreateLeave
-                  ? "确认并立即生效"
-                  : "当前账号无登记权限"
+              recoveryOwnedByAnotherUser
+                ? "请先切换原账号"
+                : resultUnverified
+                  ? "请先核实结果"
+                  : workbench.canCreateLeave
+                    ? "确认并立即生效"
+                    : "当前账号无登记权限"
             }}
           </el-button>
         </form>

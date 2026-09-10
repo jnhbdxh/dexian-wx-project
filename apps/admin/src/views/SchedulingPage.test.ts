@@ -5,6 +5,7 @@ import { defineComponent } from "vue";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApiRequestError, type LeaveConflict } from "../lib/api";
+import { saveUnverifiedLeave } from "../lib/leave-recovery";
 
 const mocks = vi.hoisted(() => ({
   createLeave: vi.fn(),
@@ -336,7 +337,7 @@ describe("leave and conflict workbench", () => {
     await flushPromises();
 
     expect(mocks.beforeLeave?.({ path: "/dashboard" })).toBe(false);
-    expect(mocks.beforeLeave?.({ path: "/login" })).toBe(true);
+    expect(mocks.beforeLeave?.({ path: "/login" })).toBe(false);
     const reload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(reload);
     expect(reload.defaultPrevented).toBe(true);
@@ -441,6 +442,97 @@ describe("leave and conflict workbench", () => {
     );
     expect(wrapper.find(".conflict-guest").text()).toContain(
       "2026/12/31 23:00–2027/1/1 01:00",
+    );
+  });
+
+  it("hides and blocks another employee's recovery request", async () => {
+    const originalUser = workbench().user;
+    saveUnverifiedLeave({
+      input: {
+        therapistResourceId: therapistId,
+        startAt: "2026-09-11T05:00:00.000Z",
+        endAt: "2026-09-11T06:00:00.000Z",
+        reasonPrivate: "员工 A 的内部原因",
+      },
+      key: "leave-attempt-owned-by-a",
+      staffUserId: originalUser.id,
+      storeId: originalUser.storeId,
+      therapistName: "小满",
+    });
+    const anotherEmployee = workbench();
+    anotherEmployee.user = {
+      ...anotherEmployee.user,
+      id: "00000000-0000-4000-8000-000000000099",
+      displayName: "另一名前台",
+    };
+    mocks.getLeaveWorkbench.mockResolvedValue(anotherEmployee);
+
+    const wrapper = mountPage();
+    await flushPromises();
+
+    expect(wrapper.find("#leave-reason").element).toHaveProperty("value", "");
+    expect(wrapper.find(".leave-submit-alert").text()).toContain(
+      "请切换回原账号核实请假",
+    );
+    expect(wrapper.find(".leave-submit-alert").text()).not.toContain(
+      "员工 A 的内部原因",
+    );
+    expect(wrapper.find("#leave-reason").attributes("disabled")).toBeDefined();
+    await wrapper.find(".leave-form").trigger("submit");
+    await flushPromises();
+    expect(mocks.createLeave).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem("dexian:unverified-leave")).toContain(
+      "leave-attempt-owned-by-a",
+    );
+  });
+
+  it("keeps the original inactive therapist visible while checking the result", async () => {
+    const current = workbench();
+    saveUnverifiedLeave({
+      input: {
+        therapistResourceId: therapistId,
+        startAt: "2026-09-11T05:00:00.000Z",
+        endAt: "2026-09-11T06:00:00.000Z",
+        reasonPrivate: "原美容师已停用",
+      },
+      key: "leave-attempt-inactive-therapist",
+      staffUserId: current.user.id,
+      storeId: current.user.storeId,
+      therapistName: "小满",
+    });
+    current.therapists = [
+      {
+        id: "00000000-0000-4000-8000-000000000088",
+        name: "谷雨",
+      },
+    ];
+    mocks.getLeaveWorkbench.mockResolvedValue(current);
+    mocks.createLeave.mockResolvedValue({
+      restrictionId: "00000000-0000-4000-8000-000000000008",
+      state: "active",
+      invalidatedPendingCount: 0,
+      affectedConfirmedCount: 0,
+      invalidatedReceptions: [],
+      conflicts: [],
+    });
+
+    const wrapper = mountPage();
+    await flushPromises();
+
+    expect(wrapper.find("#leave-therapist").element).toHaveProperty(
+      "value",
+      therapistId,
+    );
+    expect(wrapper.find("#leave-therapist").text()).toContain(
+      "小满（已停用，仅用于核实原请求）",
+    );
+    expect(wrapper.find("#leave-therapist").text()).toContain("谷雨");
+    await wrapper.find(".leave-submit-alert button").trigger("click");
+    await flushPromises();
+
+    expect(mocks.createLeave).toHaveBeenCalledWith(
+      expect.objectContaining({ therapistResourceId: therapistId }),
+      "leave-attempt-inactive-therapist",
     );
   });
 });

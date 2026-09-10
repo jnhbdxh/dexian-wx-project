@@ -3,6 +3,9 @@ import type { CreateLeaveInput } from "./api";
 export interface RecoverableLeaveAttempt {
   input: CreateLeaveInput;
   key: string;
+  staffUserId: string;
+  storeId: string;
+  therapistName: string;
 }
 
 const STORAGE_KEY = "dexian:unverified-leave";
@@ -18,6 +21,12 @@ function isAttempt(value: unknown): value is RecoverableLeaveAttempt {
   return (
     typeof attempt.key === "string" &&
     attempt.key.length >= 8 &&
+    typeof attempt.staffUserId === "string" &&
+    attempt.staffUserId.length > 0 &&
+    typeof attempt.storeId === "string" &&
+    attempt.storeId.length > 0 &&
+    typeof attempt.therapistName === "string" &&
+    attempt.therapistName.length > 0 &&
     !!input &&
     typeof input.therapistResourceId === "string" &&
     typeof input.startAt === "string" &&
@@ -27,6 +36,13 @@ function isAttempt(value: unknown): value is RecoverableLeaveAttempt {
     Number.isFinite(endAt) &&
     endAt > startAt
   );
+}
+
+export function isLeaveRecoveryOwner(
+  attempt: RecoverableLeaveAttempt,
+  user: { id: string; storeId: string },
+) {
+  return attempt.staffUserId === user.id && attempt.storeId === user.storeId;
 }
 
 export function saveUnverifiedLeave(attempt: RecoverableLeaveAttempt) {
