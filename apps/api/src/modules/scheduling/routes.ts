@@ -160,6 +160,8 @@ export const schedulingRoutes: FastifyPluginAsyncTypebox<
           startAt: Type.String({ format: "date-time" }),
           endAt: Type.String({ format: "date-time" }),
           reasonPrivate: Type.String({ minLength: 1, maxLength: 500 }),
+          initiatingStaffUserId: Uuid,
+          initiatingStoreId: Uuid,
         }),
         response: {
           201: Type.Object({
@@ -186,6 +188,16 @@ export const schedulingRoutes: FastifyPluginAsyncTypebox<
         hashToken(request.headers["x-csrf-token"]) !== session.csrfTokenHash
       ) {
         throw new AppError(403, "CSRF_INVALID", "页面状态已失效，请刷新后重试");
+      }
+      if (
+        request.body.initiatingStaffUserId !== session.staffUserId ||
+        request.body.initiatingStoreId !== session.storeId
+      ) {
+        throw new AppError(
+          409,
+          "LEAVE_REQUEST_IDENTITY_CHANGED",
+          "当前登录员工或门店已变化，请切回原账号后继续核实",
+        );
       }
       if (
         !(await staffHasPermission(

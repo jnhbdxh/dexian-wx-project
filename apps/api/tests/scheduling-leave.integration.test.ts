@@ -56,6 +56,14 @@ function leaveHeaders(idempotencyKey = `leave-${randomUUID()}`) {
   };
 }
 
+function deniedLeaveHeaders(idempotencyKey = `leave-${randomUUID()}`) {
+  return {
+    cookie: `dexian_admin_session=${deniedToken}; dexian_admin_csrf=${deniedCsrf}`,
+    "x-csrf-token": deniedCsrf,
+    "idempotency-key": idempotencyKey,
+  };
+}
+
 function confirmHeaders(idempotencyKey = `confirm-${randomUUID()}`) {
   return {
     cookie: `dexian_admin_session=${allowedToken}; dexian_admin_csrf=${allowedCsrf}`,
@@ -71,6 +79,8 @@ function leaveBody(startAt: Date, endAt: Date, therapist = therapistId) {
     startAt: startAt.toISOString(),
     endAt: endAt.toISOString(),
     reasonPrivate: "已确认的个人请假",
+    initiatingStaffUserId: allowedStaffId,
+    initiatingStoreId: storeId,
   };
 }
 
@@ -458,7 +468,7 @@ describe.runIf(hasDatabase)("scheduling leave integration", () => {
         "x-csrf-token": deniedCsrf,
         "idempotency-key": `denied-${suffix}`,
       },
-      payload: body,
+      payload: { ...body, initiatingStaffUserId: deniedStaffId },
     });
     expect(noPermission.statusCode).toBe(403);
     expect(noPermission.json().code).toBe("PERMISSION_DENIED");
@@ -489,6 +499,59 @@ describe.runIf(hasDatabase)("scheduling leave integration", () => {
       },
     });
     expect(forbiddenWorkbench.statusCode).toBe(403);
+  });
+
+  it("rejects a changed employee or store before any idempotency write", async () => {
+    const startAt = nextStart();
+    const endAt = new Date(startAt.getTime() + 60 * 60_000);
+    const key = `identity-${suffix}`;
+    const body = leaveBody(startAt, endAt);
+    const original = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/leaves",
+      headers: leaveHeaders(key),
+      payload: body,
+    });
+    expect(original.statusCode).toBe(201);
+
+    const changedEmployee = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/leaves",
+      headers: deniedLeaveHeaders(key),
+      payload: body,
+    });
+    expect(changedEmployee.statusCode).toBe(409);
+    expect(changedEmployee.json().code).toBe("LEAVE_REQUEST_IDENTITY_CHANGED");
+
+    const changedStore = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/leaves",
+      headers: leaveHeaders(`identity-store-${suffix}`),
+      payload: { ...body, initiatingStoreId: otherStoreId },
+    });
+    expect(changedStore.statusCode).toBe(409);
+    expect(changedStore.json().code).toBe("LEAVE_REQUEST_IDENTITY_CHANGED");
+
+    const writes = await database.pool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM business_events
+        WHERE operation_type = 'resource_restriction.create_leave'
+          AND ((idempotency_key = $1 AND actor_id = $3)
+               OR idempotency_key = $2)`,
+      [key, `identity-store-${suffix}`, deniedStaffId],
+    );
+    expect(writes.rows[0]!.count).toBe("0");
+
+    const restrictions = await database.pool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM resource_restrictions
+        WHERE store_id = $1
+          AND resource_id = $2
+          AND start_at = $3
+          AND end_at = $4`,
+      [storeId, therapistId, startAt, endAt],
+    );
+    expect(restrictions.rows[0]!.count).toBe("1");
   });
 
   it("creates an immediately active future leave without requiring a shift", async () => {

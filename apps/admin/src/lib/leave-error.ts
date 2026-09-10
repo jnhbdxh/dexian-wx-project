@@ -19,6 +19,12 @@ export type LeaveFailure =
       title: string;
       message: string;
       action: "refresh";
+    }
+  | {
+      kind: "identity";
+      title: string;
+      message: string;
+      action: "switch-account";
     };
 
 export function classifyLeaveFailure(error: unknown): LeaveFailure {
@@ -44,6 +50,14 @@ export function classifyLeaveFailure(error: unknown): LeaveFailure {
       title: "没有登记权限",
       message: "请联系店长分配请假登记权限。",
       action: "dismiss",
+    };
+  }
+  if (error.code === "LEAVE_REQUEST_IDENTITY_CHANGED") {
+    return {
+      kind: "identity",
+      title: "当前登录账号已变化",
+      message: "请切回发起这次请假的原员工账号，再继续核实原请求。",
+      action: "switch-account",
     };
   }
   if (

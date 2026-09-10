@@ -112,6 +112,10 @@ describe("admin API request headers", () => {
           reasonPrivate: "已确认的个人请假",
         },
         "leave-attempt-1",
+        {
+          staffUserId: "00000000-0000-4000-8000-000000000002",
+          storeId: "00000000-0000-4000-8000-000000000003",
+        },
       );
       await confirmReception(
         "00000000-0000-4000-8000-000000000001",
@@ -148,6 +152,8 @@ describe("admin API request headers", () => {
           startAt: "2026-09-11T05:00:00.000Z",
           endAt: "2026-09-11T06:00:00.000Z",
           reasonPrivate: "已确认的个人请假",
+          initiatingStaffUserId: "00000000-0000-4000-8000-000000000002",
+          initiatingStoreId: "00000000-0000-4000-8000-000000000003",
         }),
         contentType: "application/json",
         csrf: "test-csrf",

@@ -95,6 +95,11 @@ export interface CreateLeaveInput {
   reasonPrivate: string;
 }
 
+export interface CreateLeaveIdentity {
+  staffUserId: string;
+  storeId: string;
+}
+
 export interface CreateLeaveResult {
   restrictionId: string;
   state: "active";
@@ -189,11 +194,19 @@ export function getLeaveWorkbench(afterConflictId?: string) {
   );
 }
 
-export function createLeave(input: CreateLeaveInput, idempotencyKey: string) {
+export function createLeave(
+  input: CreateLeaveInput,
+  idempotencyKey: string,
+  identity: CreateLeaveIdentity,
+) {
   return request<CreateLeaveResult>("/api/v1/admin/leaves", {
     method: "POST",
     headers: { "Idempotency-Key": idempotencyKey },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      ...input,
+      initiatingStaffUserId: identity.staffUserId,
+      initiatingStoreId: identity.storeId,
+    }),
   });
 }
 

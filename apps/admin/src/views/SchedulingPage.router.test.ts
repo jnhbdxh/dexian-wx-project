@@ -188,4 +188,69 @@ describe("leave recovery with Vue Router", () => {
       expect(sessionStorage.getItem("dexian:unverified-leave")).toBeNull();
     },
   );
+
+  it("keeps the original request when another tab changes the login", async () => {
+    mocks.getLeaveWorkbench.mockResolvedValue(pageData());
+    mocks.createLeave
+      .mockRejectedValueOnce(new TypeError("Network failed"))
+      .mockRejectedValueOnce(
+        new ApiRequestError(
+          409,
+          "LEAVE_REQUEST_IDENTITY_CHANGED",
+          "当前登录员工或门店已变化",
+          "r-changed",
+          {},
+        ),
+      );
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: "/scheduling", component: SchedulingPage },
+        { path: "/login", component: LoginPage },
+      ],
+    });
+    await router.push("/scheduling");
+    await router.isReady();
+    const wrapper = mount(RouterView, {
+      global: {
+        plugins: [router],
+        stubs: {
+          ElButton: ElButtonStub,
+          ElForm: ElFormStub,
+          ElFormItem: { template: "<label><slot /></label>" },
+          ElInput: ElInputStub,
+          ElResult: true,
+          ElSkeleton: true,
+        },
+      },
+    });
+    await flushPromises();
+    await wrapper.find("#leave-start").setValue("2026-09-11T13:00");
+    await wrapper.find("#leave-end").setValue("2026-09-11T14:00");
+    await wrapper.find("#leave-reason").setValue("跨标签页身份核对");
+    await wrapper.find(".leave-form").trigger("submit");
+    await flushPromises();
+    const originalCall = mocks.createLeave.mock.calls[0];
+
+    await wrapper.find(".leave-submit-alert button").trigger("click");
+    await flushPromises();
+
+    expect(mocks.createLeave.mock.calls[1]).toEqual(originalCall);
+    expect(wrapper.find(".leave-submit-alert").text()).toContain(
+      "当前登录账号已变化",
+    );
+    expect(wrapper.find(".leave-submit-alert").text()).toContain("切回原账号");
+    expect(sessionStorage.getItem("dexian:unverified-leave")).toContain(
+      originalCall![1] as string,
+    );
+
+    await wrapper.find(".leave-submit-alert button").trigger("click");
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe(
+      "/login?redirect=/scheduling",
+    );
+    expect(sessionStorage.getItem("dexian:unverified-leave")).toContain(
+      originalCall![1] as string,
+    );
+  });
 });

@@ -165,6 +165,10 @@ describe("leave and conflict workbench", () => {
       reasonPrivate: "已确认的个人请假",
     });
     expect(mocks.createLeave.mock.calls[0]![1]).toEqual(expect.any(String));
+    expect(mocks.createLeave.mock.calls[0]![2]).toEqual({
+      staffUserId: workbench().user.id,
+      storeId: workbench().user.storeId,
+    });
     expect(mocks.getLeaveWorkbench).toHaveBeenCalledTimes(2);
     expect(wrapper.find(".leave-result").text()).toContain(
       "1 组待确认已失效，1 组已确认接待待人工跟进",
@@ -533,6 +537,10 @@ describe("leave and conflict workbench", () => {
     expect(mocks.createLeave).toHaveBeenCalledWith(
       expect.objectContaining({ therapistResourceId: therapistId }),
       "leave-attempt-inactive-therapist",
+      {
+        staffUserId: current.user.id,
+        storeId: current.user.storeId,
+      },
     );
   });
 });

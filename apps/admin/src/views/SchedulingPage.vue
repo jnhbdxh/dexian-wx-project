@@ -222,7 +222,10 @@ async function submitLeave(retryAttempt?: LeaveAttempt) {
   const wasUnverified = resultUnverified.value;
   saveUnverifiedLeave(attempt);
   try {
-    completed = await createLeave(attempt.input, attempt.key);
+    completed = await createLeave(attempt.input, attempt.key, {
+      staffUserId: attempt.staffUserId,
+      storeId: attempt.storeId,
+    });
     successfulResult.value = completed;
     resultUnverified.value = false;
     clearUnverifiedLeave();
@@ -239,6 +242,12 @@ async function submitLeave(retryAttempt?: LeaveAttempt) {
         path: "/login",
         query: { redirect: "/scheduling" },
       });
+      return;
+    }
+    if (failure.kind === "identity") {
+      resultUnverified.value = true;
+      saveUnverifiedLeave(attempt);
+      leaveFailure.value = { attempt, failure };
       return;
     }
     const mustKeepOriginal =
@@ -284,6 +293,12 @@ async function handleLeaveFailureAction() {
   if (!boundFailure) return;
   if (boundFailure.failure.action === "retry") {
     await submitLeave(boundFailure.attempt);
+  } else if (boundFailure.failure.action === "switch-account") {
+    authRedirecting.value = true;
+    await router.replace({
+      path: "/login",
+      query: { redirect: "/scheduling" },
+    });
   } else if (boundFailure.failure.action === "refresh") {
     leaveFailure.value = undefined;
     resultUnverified.value = false;
@@ -586,7 +601,9 @@ onBeforeUnmount(() => {
                       : "重试原请求"
                     : leaveFailure.failure.action === "refresh"
                       ? "刷新美容师"
-                      : "知道了"
+                      : leaveFailure.failure.action === "switch-account"
+                        ? "切回原账号"
+                        : "知道了"
                 }}
               </el-button>
               <el-button
