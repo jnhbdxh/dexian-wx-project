@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "得闲 SPA"
+  "navigationBarTitleText": "得闲预约",
+  "navigationBarBackgroundColor": "#1f4435",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#f5f0e7"
 }

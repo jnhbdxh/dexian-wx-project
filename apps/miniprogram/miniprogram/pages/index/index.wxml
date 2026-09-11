@@ -1,7 +1,164 @@
-<view class="page">
-  <view class="brand">得闲 SPA</view>
-  <view class="title">{{ status }}</view>
-  <view class="description">
-    当前已完成小程序工程骨架。预约功能将在核心技术设计复核后接入。
+<view class="page-shell">
+  <view class="hero">
+    <view class="brand-row">
+      <view class="brand-lockup">
+        <text class="brand-name">得闲</text>
+        <text class="brand-en">DEXIAN SPA</text>
+      </view>
+      <view class="store-state">今日营业至 22:00</view>
+    </view>
+
+    <view class="hero-copy">
+      <text class="hero-title">今天，给身体\n留一段空白</text>
+      <text class="hero-description">选好项目与时间，我们会为你保留合适的人员和房间。</text>
+    </view>
+
+    <view class="store-panel">
+      <view>
+        <text class="store-label">当前门店</text>
+        <text class="store-name">金宝店</text>
+      </view>
+      <view class="earliest-slot">
+        <text class="earliest-label">最快可约</text>
+        <text class="earliest-time">14:30</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="booking-content">
+    <view class="section-heading compact-heading">
+      <view>
+        <text class="section-title">这次几位到店</text>
+        <text class="section-note">多人同行预约即将开放</text>
+      </view>
+    </view>
+    <view class="guest-selector" aria-label="预约人数">
+      <button
+        wx:for="{{guestCounts}}"
+        wx:key="count"
+        class="guest-option {{guestCount === item.count ? 'is-active' : ''}} {{!item.enabled ? 'is-disabled' : ''}}"
+        disabled="{{!item.enabled}}"
+        data-count="{{item.count}}"
+        aria-label="{{item.count}} 位{{guestCount === item.count ? '，已选择' : item.enabled ? '' : '，暂未开放'}}"
+        aria-checked="{{guestCount === item.count}}"
+        aria-disabled="{{!item.enabled}}"
+        bindtap="selectGuestCount"
+      >
+        {{item.count}} 位
+      </button>
+    </view>
+
+    <view class="section-heading">
+      <view>
+        <text class="section-title">从一项舒服的服务开始</text>
+        <text class="section-note">当前价格按每位顾客计算</text>
+      </view>
+      <text class="section-step">项目</text>
+    </view>
+    <view class="service-list">
+      <button
+        wx:for="{{services}}"
+        wx:key="id"
+        class="service-card {{selectedService.id === item.id ? 'is-selected' : ''}}"
+        data-id="{{item.id}}"
+        aria-label="{{item.name}}，{{item.priceLabel}}，{{item.durationMinutes}} 分钟{{selectedService.id === item.id ? '，已选择' : ''}}"
+        aria-checked="{{selectedService.id === item.id}}"
+        bindtap="selectService"
+      >
+        <view class="service-mark tone-{{item.tone}}">{{item.mark}}</view>
+        <view class="service-copy">
+          <view class="service-topline">
+            <text class="service-name">{{item.name}}</text>
+            <text class="service-price">{{item.priceLabel}}</text>
+          </view>
+          <text class="service-description">{{item.description}}</text>
+          <view class="service-meta">
+            <text>{{item.durationMinutes}} 分钟</text>
+            <text wx:if="{{selectedService.id === item.id}}" class="selected-label">已选择</text>
+          </view>
+        </view>
+      </button>
+    </view>
+
+    <view class="section-heading">
+      <view>
+        <text class="section-title">选择到店日期</text>
+        <text class="section-note">可左右滑动查看更多日期</text>
+      </view>
+      <text class="section-step">时间</text>
+    </view>
+    <scroll-view class="date-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="date-list">
+        <button
+          wx:for="{{dates}}"
+          wx:key="key"
+          class="date-option {{selectedDateKey === item.key ? 'is-active' : ''}}"
+          data-key="{{item.key}}"
+          aria-label="{{item.dateLabel}}，{{item.weekday}}{{selectedDateKey === item.key ? '，已选择' : ''}}"
+          aria-checked="{{selectedDateKey === item.key}}"
+          bindtap="selectDate"
+        >
+          <text class="date-relative">{{item.relativeLabel || item.weekday}}</text>
+          <text class="date-value">{{item.dateLabel}}</text>
+          <text class="date-weekday">{{selectedDateKey === item.key ? '已选' : item.relativeLabel ? item.weekday : '可预约'}}</text>
+        </button>
+      </view>
+    </scroll-view>
+
+    <view class="time-grid">
+      <button
+        wx:for="{{timeOptions}}"
+        wx:key="value"
+        class="time-option {{selectedTime === item.value ? 'is-active' : ''}} {{!item.available ? 'is-disabled' : ''}}"
+        disabled="{{!item.available}}"
+        data-value="{{item.value}}"
+        aria-label="{{item.label}}，{{selectedTime === item.value ? '已选择' : item.note}}"
+        aria-checked="{{selectedTime === item.value}}"
+        aria-disabled="{{!item.available}}"
+        bindtap="selectTime"
+      >
+        <text class="time-value">{{item.label}}</text>
+        <text class="time-note">{{selectedTime === item.value ? '已选 · ' + item.note : item.note}}</text>
+      </button>
+    </view>
+
+    <view class="section-heading">
+      <view>
+        <text class="section-title">选择服务人员</text>
+        <text class="section-note">当前版本需要明确选择一位人员</text>
+      </view>
+      <text class="section-step">人员</text>
+    </view>
+    <scroll-view class="therapist-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="therapist-list">
+        <button
+          wx:for="{{therapists}}"
+          wx:key="id"
+          class="therapist-card {{selectedTherapist.id === item.id ? 'is-selected' : ''}}"
+          data-id="{{item.id}}"
+          aria-label="{{item.name}}，{{item.specialty}}{{selectedTherapist.id === item.id ? '，已选择' : ''}}"
+          aria-checked="{{selectedTherapist.id === item.id}}"
+          bindtap="selectTherapist"
+        >
+          <view class="therapist-avatar tone-{{item.tone}}">{{item.mark}}</view>
+          <text class="therapist-name">{{item.name}}</text>
+          <text class="therapist-specialty">{{item.specialty}}</text>
+          <text wx:if="{{selectedTherapist.id === item.id}}" class="therapist-selected">已选</text>
+        </button>
+      </view>
+    </scroll-view>
+
+    <view class="booking-note">
+      <text class="booking-note-title">预约说明</text>
+      <text>提交后需等待门店确认，页面会显示确认截止时间；确认前不会产生支付。</text>
+    </view>
+  </view>
+
+  <view class="booking-bar">
+    <view class="booking-summary">
+      <text class="summary-caption">{{guestCount}} 位 · {{selectedService.durationMinutes}} 分钟</text>
+      <text class="summary-price">预计 {{totalLabel}}</text>
+    </view>
+    <button class="continue-button" bindtap="continueBooking">查看可约安排</button>
   </view>
 </view>

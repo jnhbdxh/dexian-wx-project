@@ -1,10 +1,11 @@
 {
   "pages": ["pages/index/index"],
   "window": {
-    "navigationBarTitleText": "得闲 SPA",
-    "navigationBarBackgroundColor": "#f5f3ef",
-    "navigationBarTextStyle": "black",
-    "backgroundColor": "#f5f3ef"
+    "navigationBarTitleText": "得闲预约",
+    "navigationBarBackgroundColor": "#1f4435",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f0e7",
+    "backgroundTextStyle": "dark"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",

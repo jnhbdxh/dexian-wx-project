@@ -12,6 +12,9 @@ colors:
   line: "#d9e1dc"
   warning: "#a85b13"
   danger: "#b63d35"
+  miniprogram-canvas: "#f5f0e7"
+  miniprogram-forest: "#1f4435"
+  miniprogram-terracotta: "#a95f43"
 typography:
   display:
     fontFamily: "PingFang SC, Microsoft YaHei, system-ui, sans-serif"
@@ -80,6 +83,8 @@ components:
 
 主色使用沉稳的森林绿；背景与边界保持低对比，橙色只承担时间压力和人工待办，红色只承担失败。
 
+小程序使用暖奶油画布（`miniprogram-canvas`）、深森林绿主色（`miniprogram-forest`）与陶土强调色（`miniprogram-terracotta`）；陶土色仅用于当前关键选择或需要聚焦的局部动作。
+
 **The Semantic Accent Rule.** 绿色表示可执行或已生效，橙色表示需要关注但业务仍然保留，红色表示失败或无法继续。
 
 ## Typography
@@ -94,6 +99,8 @@ components:
 ## Layout
 
 页面内容最大宽度为 1240px。桌面工作台采用主次双栏：登记或队列位于左侧，业务详情位于右侧；820px 以下转为单栏，560px 以下列表改为横向可滑动选择。基础间距以 8px 为起点，常用组合为 12、16、24 和 32px。
+
+小程序预约固定按“人数 → 项目 → 日期 → 时间 → 人员”推进；固定底栏必须为设备 `safe-area` 预留空间，页面末尾内容不得被底栏遮挡。
 
 **The Action Order Rule.** 窄屏先呈现需要填写或判断的动作，再呈现受影响对象和跟进信息。
 
@@ -112,6 +119,7 @@ components:
 - 主按钮使用深绿色底和白字，宽度服从所在动作区。
 - 次要按钮使用白底、细边界和深绿文字。
 - 所有移动端关键按钮和输入区域至少 44px 高；焦点显示绿色半透明外圈。
+- 小程序所有可触控操作区高度至少 88rpx。
 
 ### Cards / Containers
 
@@ -128,6 +136,11 @@ components:
 
 - 顶部品牌、当前人员和跨工作台动作保持在同一行。
 - 结果未知或关键请求执行中时，离开、刷新和重复提交入口应禁用。
+
+### Mini Program Booking
+
+- 选择项的选中态必须同时使用颜色与描边、图标或文字标记，不能只靠颜色区分。
+- 多人分配能力接入前，2–4 人选项保持禁用，并明确说明暂不可用；仅开放 1 人预约。
 
 ### Operational Alerts
 

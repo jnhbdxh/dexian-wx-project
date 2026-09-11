@@ -1,26 +1,523 @@
-.page {
+.page-shell {
   min-height: 100vh;
-  padding: 96rpx 48rpx;
-  box-sizing: border-box;
+  padding-bottom: calc(156rpx + env(safe-area-inset-bottom));
+  background: #f5f0e7;
 }
 
-.brand {
-  color: #597263;
-  font-size: 26rpx;
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 34rpx 34rpx 38rpx;
+  color: #fffaf0;
+  background: #1f4435;
+}
+
+.hero::before {
+  position: absolute;
+  top: 116rpx;
+  right: -80rpx;
+  width: 276rpx;
+  height: 276rpx;
+  border: 1rpx solid rgba(255, 250, 240, 0.18);
+  border-radius: 50%;
+  content: "";
+}
+
+.hero::after {
+  position: absolute;
+  top: 162rpx;
+  right: -34rpx;
+  width: 184rpx;
+  height: 184rpx;
+  border: 1rpx solid rgba(255, 250, 240, 0.12);
+  border-radius: 50%;
+  content: "";
+}
+
+.brand-row,
+.store-panel,
+.service-topline,
+.service-meta,
+.section-heading,
+.booking-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: baseline;
+  gap: 14rpx;
+}
+
+.brand-name {
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 38rpx;
   font-weight: 700;
+  letter-spacing: 8rpx;
+}
+
+.brand-en {
+  color: rgba(255, 250, 240, 0.66);
+  font-size: 20rpx;
   letter-spacing: 4rpx;
 }
 
-.title {
-  margin-top: 24rpx;
-  font-size: 52rpx;
-  font-weight: 700;
-  line-height: 1.25;
+.store-state {
+  min-height: 48rpx;
+  padding: 0 18rpx;
+  border: 1rpx solid rgba(255, 250, 240, 0.24);
+  border-radius: 999rpx;
+  color: rgba(255, 250, 240, 0.84);
+  font-size: 21rpx;
+  line-height: 48rpx;
 }
 
-.description {
-  margin-top: 28rpx;
-  color: #667069;
-  font-size: 30rpx;
-  line-height: 1.7;
+.hero-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 74%;
+  margin-top: 58rpx;
+}
+
+.hero-title {
+  white-space: pre-line;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 58rpx;
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: 2rpx;
+}
+
+.hero-description {
+  margin-top: 22rpx;
+  color: rgba(255, 250, 240, 0.72);
+  font-size: 25rpx;
+  line-height: 1.65;
+}
+
+.store-panel {
+  position: relative;
+  z-index: 1;
+  margin-top: 48rpx;
+  padding: 24rpx 26rpx;
+  border: 1rpx solid rgba(255, 250, 240, 0.16);
+  border-radius: 24rpx;
+  background: rgba(255, 250, 240, 0.08);
+}
+
+.store-panel > view,
+.earliest-slot,
+.section-heading > view,
+.booking-summary {
+  display: flex;
+  flex-direction: column;
+}
+
+.store-label,
+.earliest-label {
+  color: rgba(255, 250, 240, 0.72);
+  font-size: 22rpx;
+}
+
+.store-name,
+.earliest-time {
+  margin-top: 4rpx;
+  font-size: 29rpx;
+  font-weight: 700;
+}
+
+.earliest-slot {
+  align-items: flex-end;
+}
+
+.booking-content {
+  padding: 10rpx 30rpx 42rpx;
+}
+
+.section-heading {
+  margin-top: 58rpx;
+  margin-bottom: 22rpx;
+}
+
+.compact-heading {
+  margin-top: 36rpx;
+}
+
+.section-title {
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.section-note {
+  margin-top: 6rpx;
+  color: #5d6a63;
+  font-size: 23rpx;
+}
+
+.section-step {
+  padding: 9rpx 18rpx;
+  border-radius: 999rpx;
+  color: #315846;
+  background: #dce8df;
+  font-size: 21rpx;
+  font-weight: 700;
+}
+
+.guest-selector {
+  display: flex;
+  padding: 8rpx;
+  border: 1rpx solid #ded6c9;
+  border-radius: 24rpx;
+  background: #ece3d6;
+}
+
+.guest-option,
+.date-option,
+.time-option,
+.service-card,
+.therapist-card,
+.continue-button {
+  min-height: 88rpx;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font-size: inherit;
+  line-height: normal;
+}
+
+.guest-option {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  border-radius: 18rpx;
+  color: #5d665f;
+  font-size: 27rpx;
+}
+
+.guest-option.is-active {
+  color: #fffaf0;
+  background: #1f4435;
+  font-weight: 700;
+}
+
+.guest-option.is-disabled {
+  color: #827f78;
+  background: #eee8df;
+  opacity: 1;
+}
+
+.service-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.service-card {
+  display: flex;
+  align-self: stretch;
+  align-items: stretch;
+  width: calc(100vw - 60rpx);
+  min-width: calc(100vw - 60rpx);
+  max-width: calc(100vw - 60rpx);
+  margin: 0;
+  padding: 16rpx;
+  border: 1rpx solid #ddd4c7;
+  border-radius: 26rpx;
+  text-align: left;
+  background: #fffdf8;
+  box-shadow: 0 12rpx 30rpx rgba(56, 45, 29, 0.06);
+}
+
+.service-card.is-selected {
+  border-color: #315846;
+  box-shadow: 0 14rpx 34rpx rgba(31, 68, 53, 0.12);
+}
+
+.service-mark {
+  display: flex;
+  flex: 0 0 124rpx;
+  align-items: center;
+  justify-content: center;
+  min-height: 136rpx;
+  border-radius: 20rpx;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.tone-sage {
+  color: #244b3a;
+  background: #cfddd3;
+}
+
+.tone-clay {
+  color: #734a36;
+  background: #ead2c1;
+}
+
+.tone-sand {
+  color: #68573e;
+  background: #e8dcbf;
+}
+
+.tone-deep {
+  color: #fffaf0;
+  background: #315846;
+}
+
+.service-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 8rpx 10rpx 8rpx 24rpx;
+}
+
+.service-name {
+  font-size: 29rpx;
+  font-weight: 700;
+}
+
+.service-price {
+  color: #315846;
+  font-size: 27rpx;
+  font-weight: 700;
+}
+
+.service-description {
+  margin-top: 10rpx;
+  color: #667169;
+  font-size: 22rpx;
+  line-height: 1.55;
+}
+
+.service-meta {
+  margin-top: 14rpx;
+  color: #706b62;
+  font-size: 21rpx;
+}
+
+.selected-label {
+  color: #315846;
+  font-weight: 700;
+}
+
+.date-scroll,
+.therapist-scroll {
+  width: calc(100% + 30rpx);
+}
+
+.date-list,
+.therapist-list {
+  display: flex;
+  width: max-content;
+  padding-right: 30rpx;
+  gap: 14rpx;
+}
+
+.date-option {
+  display: flex;
+  flex: 0 0 130rpx;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 130rpx;
+  min-width: 130rpx;
+  max-width: 130rpx;
+  height: 142rpx;
+  margin: 0;
+  border: 1rpx solid #ddd4c7;
+  border-radius: 22rpx;
+  background: #fffdf8;
+}
+
+.date-option.is-active {
+  color: #fffaf0;
+  border-color: #315846;
+  background: #315846;
+}
+
+.date-relative,
+.date-weekday {
+  color: #66726a;
+  font-size: 22rpx;
+}
+
+.date-option.is-active .date-relative,
+.date-option.is-active .date-weekday {
+  color: rgba(255, 250, 240, 0.72);
+}
+
+.date-value {
+  margin: 7rpx 0 4rpx;
+  font-size: 29rpx;
+  font-weight: 700;
+}
+
+.time-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 20rpx;
+}
+
+.time-option {
+  display: flex;
+  flex: 0 0 calc((100% - 14rpx) / 2);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 0;
+  height: 112rpx;
+  margin: 0;
+  box-sizing: border-box;
+  border: 1rpx solid #ddd4c7;
+  border-radius: 18rpx;
+  background: #fffdf8;
+}
+
+.time-option.is-active {
+  color: #fffaf0;
+  border-color: #a95f43;
+  background: #a95f43;
+}
+
+.time-option.is-disabled {
+  color: #96928a;
+  background: #e8e3db;
+}
+
+.time-value {
+  font-size: 27rpx;
+  font-weight: 700;
+}
+
+.time-note {
+  margin-top: 7rpx;
+  color: #667169;
+  font-size: 21rpx;
+}
+
+.time-option.is-active .time-note {
+  color: rgba(255, 250, 240, 0.76);
+}
+
+.therapist-card {
+  display: flex;
+  flex: 0 0 220rpx;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 220rpx;
+  min-width: 220rpx;
+  max-width: 220rpx;
+  min-height: 250rpx;
+  margin: 0;
+  padding: 22rpx 14rpx;
+  border: 1rpx solid #ddd4c7;
+  border-radius: 26rpx;
+  background: #fffdf8;
+}
+
+.therapist-card.is-selected {
+  border-color: #315846;
+  background: #e4ede6;
+}
+
+.therapist-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 50%;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.therapist-name {
+  margin-top: 17rpx;
+  font-size: 27rpx;
+  font-weight: 700;
+}
+
+.therapist-specialty {
+  margin-top: 7rpx;
+  color: #5f6c64;
+  font-size: 22rpx;
+}
+
+.therapist-selected {
+  margin-top: 7rpx;
+  color: #315846;
+  font-size: 21rpx;
+  font-weight: 700;
+}
+
+.booking-note {
+  display: flex;
+  flex-direction: column;
+  margin-top: 48rpx;
+  padding: 26rpx;
+  border-radius: 22rpx;
+  color: #655d52;
+  background: #eae1d3;
+  font-size: 22rpx;
+  line-height: 1.65;
+}
+
+.booking-note-title {
+  margin-bottom: 8rpx;
+  color: #2a493b;
+  font-size: 25rpx;
+  font-weight: 700;
+}
+
+.booking-bar {
+  position: fixed;
+  z-index: 20;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-height: 116rpx;
+  padding: 18rpx 26rpx calc(18rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid rgba(42, 57, 48, 0.12);
+  background: #fffdf8;
+  box-shadow: 0 -12rpx 32rpx rgba(36, 47, 41, 0.1);
+}
+
+.summary-caption {
+  color: #5d6a63;
+  font-size: 22rpx;
+}
+
+.summary-price {
+  margin-top: 4rpx;
+  color: #1f4435;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.continue-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 276rpx;
+  padding: 0 30rpx;
+  border-radius: 20rpx;
+  color: #fffaf0;
+  background: #1f4435;
+  font-size: 27rpx;
+  font-weight: 700;
 }
