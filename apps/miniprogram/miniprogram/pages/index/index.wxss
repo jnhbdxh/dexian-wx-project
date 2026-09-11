@@ -39,7 +39,8 @@
 .service-topline,
 .service-meta,
 .section-heading,
-.booking-bar {
+.booking-bar-main,
+.expanded-summary-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -496,6 +497,49 @@
   box-shadow: 0 -12rpx 32rpx rgba(36, 47, 41, 0.1);
 }
 
+.expanded-summary {
+  display: flex;
+  flex-direction: column;
+  margin: -2rpx -2rpx 18rpx;
+  padding: 4rpx 2rpx 22rpx;
+  border-bottom: 1rpx solid #e0d8cc;
+}
+
+.expanded-summary-title {
+  color: #1f4435;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.summary-close {
+  min-width: 88rpx;
+  min-height: 88rpx;
+  margin: 0;
+  padding: 0 8rpx;
+  color: #315846;
+  background: transparent;
+  font-size: 23rpx;
+  line-height: 88rpx;
+}
+
+.expanded-summary-line {
+  margin-top: 10rpx;
+  color: #293a32;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.demo-notice {
+  margin-top: 16rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 14rpx;
+  color: #734a36;
+  background: #f1dfd2;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
 .summary-caption {
   color: #5d6a63;
   font-size: 22rpx;
@@ -513,7 +557,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 276rpx;
+  min-width: 264rpx;
   padding: 0 30rpx;
   border-radius: 20rpx;
   color: #fffaf0;

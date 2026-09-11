@@ -10,7 +10,7 @@
 
     <view class="hero-copy">
       <text class="hero-title">今天，给身体\n留一段空白</text>
-      <text class="hero-description">选好项目与时间，我们会为你保留合适的人员和房间。</text>
+      <text class="hero-description">选好项目、时间和服务人员，再核对本次预约信息。</text>
     </view>
 
     <view class="store-panel">
@@ -20,7 +20,7 @@
       </view>
       <view class="earliest-slot">
         <text class="earliest-label">最快可约</text>
-        <text class="earliest-time">14:30</text>
+        <text class="earliest-time">11:00</text>
       </view>
     </view>
   </view>
@@ -154,11 +154,30 @@
     </view>
   </view>
 
-  <view class="booking-bar">
-    <view class="booking-summary">
-      <text class="summary-caption">{{guestCount}} 位 · {{selectedService.durationMinutes}} 分钟</text>
-      <text class="summary-price">预计 {{totalLabel}}</text>
+  <view class="booking-bar {{summaryExpanded ? 'is-expanded' : ''}}">
+    <view wx:if="{{summaryExpanded}}" class="expanded-summary" aria-label="预约摘要">
+      <view class="expanded-summary-head">
+        <text class="expanded-summary-title">预约摘要</text>
+        <button class="summary-close" aria-label="收起预约摘要" bindtap="hideBookingSummary">收起</button>
+      </view>
+      <text class="expanded-summary-line">金宝店｜{{guestCount}} 位｜{{selectedService.name}} {{selectedService.durationMinutes}} 分钟</text>
+      <text class="expanded-summary-line">{{selectedDateLabel}} {{selectedTime}}｜{{selectedTherapist.name}}｜预计 {{totalLabel}}</text>
+      <text class="demo-notice">演示数据，尚未创建预约</text>
     </view>
-    <button class="continue-button" bindtap="continueBooking">查看可约安排</button>
+
+    <view class="booking-bar-main">
+      <view class="booking-summary">
+        <text class="summary-caption">{{selectedService.name}} · {{selectedTime}}</text>
+        <text class="summary-price">{{selectedDateLabel}} · 预计 {{totalLabel}}</text>
+      </view>
+      <button
+        class="continue-button"
+        aria-label="预览完整预约摘要"
+        aria-expanded="{{summaryExpanded}}"
+        bindtap="showBookingSummary"
+      >
+        预览预约摘要
+      </button>
+    </view>
   </view>
 </view>

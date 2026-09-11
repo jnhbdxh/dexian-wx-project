@@ -31,6 +31,9 @@ interface TherapistOption {
   tone: string;
 }
 
+const storeTimezone = "Asia/Shanghai";
+const initialDates = buildDateOptions(new Date(), storeTimezone);
+
 const services: ServiceOption[] = [
   {
     id: "calm",
@@ -89,9 +92,9 @@ const therapists: TherapistOption[] = [
 ];
 
 const timeOptions: TimeOption[] = [
-  { value: "11:00", label: "11:00", available: true, note: "余量充足" },
+  { value: "11:00", label: "11:00", available: true, note: "最快可约" },
   { value: "13:30", label: "13:30", available: true, note: "余 2 位" },
-  { value: "14:30", label: "14:30", available: true, note: "最快可约" },
+  { value: "14:30", label: "14:30", available: true, note: "余量充足" },
   { value: "16:00", label: "16:00", available: false, note: "已约满" },
   { value: "18:30", label: "18:30", available: true, note: "余 1 位" },
 ];
@@ -107,18 +110,27 @@ Page({
     guestCount: 1,
     services,
     selectedService: services[0]!,
-    dates: buildDateOptions(),
-    selectedDateKey: "",
+    dates: initialDates,
+    selectedDateKey: initialDates[0]?.key ?? "",
+    selectedDateLabel: initialDates[0]?.summaryLabel ?? "",
     timeOptions,
-    selectedTime: "14:30",
+    selectedTime: "11:00",
     therapists,
     selectedTherapist: therapists[0]!,
     totalLabel: totalLabel(services[0]!.priceCents, 1),
+    summaryExpanded: false,
   },
 
-  onLoad() {
-    const firstDate = this.data.dates[0];
-    if (firstDate) this.setData({ selectedDateKey: firstDate.key });
+  onShow() {
+    const dates = buildDateOptions(new Date(), storeTimezone);
+    const selectedDate =
+      dates.find((item) => item.key === this.data.selectedDateKey) ?? dates[0];
+    if (!selectedDate) return;
+    this.setData({
+      dates,
+      selectedDateKey: selectedDate.key,
+      selectedDateLabel: selectedDate.summaryLabel,
+    });
   },
 
   selectGuestCount(event: WechatMiniprogram.TouchEvent) {
@@ -146,7 +158,15 @@ Page({
 
   selectDate(event: WechatMiniprogram.TouchEvent) {
     const selectedDateKey = String(event.currentTarget.dataset.key ?? "");
-    if (selectedDateKey) this.setData({ selectedDateKey });
+    const selectedDate = this.data.dates.find(
+      (item) => item.key === selectedDateKey,
+    );
+    if (selectedDate) {
+      this.setData({
+        selectedDateKey,
+        selectedDateLabel: selectedDate.summaryLabel,
+      });
+    }
   },
 
   selectTime(event: WechatMiniprogram.TouchEvent) {
@@ -162,11 +182,11 @@ Page({
     if (therapist) this.setData({ selectedTherapist: therapist });
   },
 
-  continueBooking() {
-    wx.showToast({
-      title: "选择已保存，下一步将接入可约查询",
-      icon: "none",
-      duration: 2200,
-    });
+  showBookingSummary() {
+    this.setData({ summaryExpanded: true });
+  },
+
+  hideBookingSummary() {
+    this.setData({ summaryExpanded: false });
   },
 });
