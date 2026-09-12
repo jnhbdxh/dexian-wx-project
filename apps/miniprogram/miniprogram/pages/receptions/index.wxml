@@ -1,0 +1,61 @@
+<view class="page-shell">
+  <view class="page-head">
+    <text class="page-title">我的预约</text>
+    <text class="page-description">下拉刷新，查看门店确认或资源变化后的最新结果。</text>
+  </view>
+
+  <view wx:if="{{loading && items.length === 0}}" class="state-panel" aria-live="polite">
+    <view class="loading-mark"></view>
+    <text class="state-title">正在读取预约记录</text>
+    <text class="state-copy">请稍候，页面会显示当前微信身份下的预约。</text>
+  </view>
+
+  <view wx:elif="{{errorMessage && items.length === 0}}" class="state-panel is-error" aria-live="assertive">
+    <text class="state-title">暂时无法加载</text>
+    <text class="state-copy">{{errorMessage}}</text>
+    <button class="primary-button" bindtap="loadReceptions">重新加载</button>
+  </view>
+
+  <view wx:elif="{{items.length === 0}}" class="state-panel">
+    <text class="state-title">还没有预约记录</text>
+    <text class="state-copy">完成首次预约后，待确认、已确认或失效结果都会保留在这里。</text>
+    <button class="primary-button" bindtap="createBooking">去预约</button>
+  </view>
+
+  <view wx:else class="reception-list">
+    <button
+      wx:for="{{items}}"
+      wx:key="receptionId"
+      class="reception-item"
+      data-id="{{item.receptionId}}"
+      aria-label="{{item.storeName}}，{{item.serviceItemName}}，{{item.dateTimeLabel}}，{{item.statusLabel}}，查看详情"
+      bindtap="openReception"
+    >
+      <view class="item-topline">
+        <text class="store-name">{{item.storeName}}</text>
+        <text class="status-pill tone-{{item.statusTone}}">{{item.statusLabel}}</text>
+      </view>
+      <text class="service-name">{{item.serviceItemName}}</text>
+      <text class="appointment-time">{{item.dateTimeLabel}}</text>
+      <view class="item-bottomline">
+        <text>{{item.therapistName}}{{item.guestCount > 1 ? '等服务人员' : ''}}</text>
+        <text class="amount">{{item.amountLabel}}</text>
+      </view>
+      <text class="detail-link">查看最新状态与详情</text>
+    </button>
+
+    <view wx:if="{{errorMessage}}" class="inline-error" aria-live="polite">
+      <text>{{errorMessage}}</text>
+    </view>
+    <button
+      wx:if="{{nextCursor}}"
+      class="load-more"
+      loading="{{loading || loadingMore}}"
+      aria-disabled="{{loading || loadingMore}}"
+      bindtap="loadMore"
+    >
+      {{loading ? '正在刷新预约' : loadingMore ? '正在加载' : '加载更早的预约'}}
+    </button>
+    <text wx:else class="list-end">已显示全部预约</text>
+  </view>
+</view>

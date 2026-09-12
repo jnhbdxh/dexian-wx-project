@@ -1,0 +1,216 @@
+.page-shell {
+  min-height: 100vh;
+  padding: 34rpx 30rpx calc(48rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  color: #22372e;
+  background: #f5f0e7;
+}
+
+.state-panel,
+.status-panel,
+.detail-section,
+.action-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 32rpx;
+  border: 1rpx solid #ddd4c7;
+  border-radius: 26rpx;
+  background: #fffdf8;
+  box-shadow: 0 12rpx 30rpx rgba(56, 45, 29, 0.06);
+}
+
+.state-panel {
+  align-items: flex-start;
+  margin-top: 72rpx;
+}
+
+.state-panel.is-error {
+  border-color: #deb8ab;
+}
+
+.loading-mark {
+  width: 46rpx;
+  height: 46rpx;
+  border: 5rpx solid #d4e0d7;
+  border-top-color: #1f4435;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.state-title,
+.status-title,
+.section-title {
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.state-title {
+  margin-top: 20rpx;
+}
+
+.state-copy,
+.status-message,
+.action-note {
+  margin-top: 12rpx;
+  color: #5d6a63;
+  font-size: 24rpx;
+  line-height: 1.65;
+}
+
+.status-topline,
+.detail-row,
+.guest-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.status-panel.tone-pending {
+  border-color: #d9bca6;
+  background: #f7e8dc;
+}
+
+.status-panel.tone-confirmed {
+  border-color: #a9c4b0;
+  background: #e4efe6;
+}
+
+.status-panel.tone-expired,
+.status-panel.tone-invalidated {
+  border-color: #dab6ab;
+  background: #f4e2dd;
+}
+
+.status-pill {
+  flex: none;
+  padding: 9rpx 17rpx;
+  border-radius: 999rpx;
+  color: #fffaf0;
+  background: #315846;
+  font-size: 21rpx;
+  font-weight: 700;
+}
+
+.tone-expired .status-pill,
+.tone-invalidated .status-pill {
+  background: #8b4a3c;
+}
+
+.deadline {
+  margin-top: 18rpx;
+  color: #734a36;
+  font-size: 24rpx;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-section,
+.action-panel {
+  margin-top: 22rpx;
+}
+
+.store-name {
+  margin-top: 24rpx;
+  color: #59665f;
+  font-size: 23rpx;
+}
+
+.appointment-time {
+  margin-top: 8rpx;
+  color: #1f4435;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 38rpx;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-row {
+  margin-top: 22rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #e4ddd2;
+  color: #606c65;
+  font-size: 24rpx;
+}
+
+.amount,
+.guest-amount {
+  color: #1f4435;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.guest-detail {
+  display: flex;
+  flex-direction: column;
+  margin-top: 22rpx;
+  padding-top: 22rpx;
+  border-top: 1rpx solid #e4ddd2;
+}
+
+.service-name {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.guest-meta {
+  margin-top: 10rpx;
+  color: #5d6a63;
+  font-size: 23rpx;
+  line-height: 1.5;
+}
+
+.primary-button,
+.secondary-button,
+.text-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88rpx;
+  margin: 0;
+  padding: 0 32rpx;
+  border-radius: 18rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.primary-button {
+  margin-top: 18rpx;
+  color: #fffaf0;
+  background: #1f4435;
+}
+
+.secondary-button {
+  color: #315846;
+  border: 1rpx solid #9aae9f;
+  background: #fffdf8;
+}
+
+.text-button {
+  min-height: 72rpx;
+  margin-top: 8rpx;
+  padding: 0;
+  color: #7b3d32;
+  background: transparent;
+}
+
+.inline-error {
+  display: flex;
+  flex-direction: column;
+  margin-top: 22rpx;
+  padding: 20rpx 22rpx;
+  border-radius: 16rpx;
+  color: #8b352f;
+  background: #f4dcd7;
+  font-size: 23rpx;
+  line-height: 1.55;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

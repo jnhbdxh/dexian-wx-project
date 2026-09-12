@@ -5,7 +5,7 @@
         <text class="brand-name">得闲</text>
         <text class="brand-en">DEXIAN SPA</text>
       </view>
-      <view class="store-state">今日营业至 22:00</view>
+      <button class="receptions-link" bindtap="openReceptions">我的预约</button>
     </view>
 
     <view class="hero-copy">
@@ -16,11 +16,11 @@
     <view class="store-panel">
       <view>
         <text class="store-label">当前门店</text>
-        <text class="store-name">金宝店</text>
+        <text class="store-name">{{storeName}}</text>
       </view>
       <view class="earliest-slot">
         <text class="earliest-label">最快可约</text>
-        <text class="earliest-time">11:00</text>
+        <text class="earliest-time">{{earliestTime}}</text>
       </view>
     </view>
   </view>
@@ -41,7 +41,7 @@
         data-count="{{item.count}}"
         aria-label="{{item.count}} 位{{guestCount === item.count ? '，已选择' : item.enabled ? '' : '，暂未开放'}}"
         aria-checked="{{guestCount === item.count}}"
-        aria-disabled="{{!item.enabled}}"
+        aria-disabled="{{!item.enabled || interactionLocked}}"
         bindtap="selectGuestCount"
       >
         {{item.count}} 位
@@ -63,6 +63,7 @@
         data-id="{{item.id}}"
         aria-label="{{item.name}}，{{item.priceLabel}}，{{item.durationMinutes}} 分钟{{selectedService.id === item.id ? '，已选择' : ''}}"
         aria-checked="{{selectedService.id === item.id}}"
+        aria-disabled="{{interactionLocked}}"
         bindtap="selectService"
       >
         <view class="service-mark tone-{{item.tone}}">{{item.mark}}</view>
@@ -87,6 +88,10 @@
       </view>
       <text class="section-step">时间</text>
     </view>
+    <view wx:if="{{bookingEntryClosed}}" class="availability-error" aria-live="polite">
+      <text>门店暂未开放在线预约</text>
+      <text>可先查看“我的预约”；门店发布营业政策后，日期和时刻会自动开放。</text>
+    </view>
     <scroll-view class="date-scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="date-list">
         <button
@@ -96,11 +101,12 @@
           data-key="{{item.key}}"
           aria-label="{{item.dateLabel}}，{{item.weekday}}{{selectedDateKey === item.key ? '，已选择' : ''}}"
           aria-checked="{{selectedDateKey === item.key}}"
+          aria-disabled="{{interactionLocked}}"
           bindtap="selectDate"
         >
           <text class="date-relative">{{item.relativeLabel || item.weekday}}</text>
           <text class="date-value">{{item.dateLabel}}</text>
-          <text class="date-weekday">{{selectedDateKey === item.key ? '已选' : item.relativeLabel ? item.weekday : '可预约'}}</text>
+          <text class="date-weekday">{{selectedDateKey === item.key ? '已选' : item.relativeLabel ? item.weekday : '可选择'}}</text>
         </button>
       </view>
     </scroll-view>
@@ -108,24 +114,33 @@
     <view class="time-grid">
       <button
         wx:for="{{timeOptions}}"
-        wx:key="value"
-        class="time-option {{selectedTime === item.value ? 'is-active' : ''}} {{!item.available ? 'is-disabled' : ''}}"
+        wx:key="serviceStartAt"
+        class="time-option {{selectedServiceStartAt === item.serviceStartAt ? 'is-active' : ''}} {{!item.available ? 'is-disabled' : ''}}"
         disabled="{{!item.available}}"
-        data-value="{{item.value}}"
-        aria-label="{{item.label}}，{{selectedTime === item.value ? '已选择' : item.note}}"
-        aria-checked="{{selectedTime === item.value}}"
-        aria-disabled="{{!item.available}}"
+        data-start="{{item.serviceStartAt}}"
+        aria-label="{{item.label}}，{{selectedServiceStartAt === item.serviceStartAt ? '已选择' : item.note}}"
+        aria-checked="{{selectedServiceStartAt === item.serviceStartAt}}"
+        aria-disabled="{{!item.available || interactionLocked}}"
         bindtap="selectTime"
       >
         <text class="time-value">{{item.label}}</text>
-        <text class="time-note">{{selectedTime === item.value ? '已选 · ' + item.note : item.note}}</text>
+        <text class="time-note">{{selectedServiceStartAt === item.serviceStartAt ? '已选 · ' + item.note : item.note}}</text>
       </button>
+    </view>
+
+    <view
+      wx:if="{{availabilityFailed && !summaryExpanded}}"
+      class="availability-error"
+      aria-live="polite"
+    >
+      <text>{{bookingMessage}}</text>
+      <text>请点击底部“重新查询可约时间”继续。</text>
     </view>
 
     <view class="section-heading">
       <view>
         <text class="section-title">选择服务人员</text>
-        <text class="section-note">当前版本需要明确选择一位人员</text>
+        <text class="section-note">请选择为你服务的美容师</text>
       </view>
       <text class="section-step">人员</text>
     </view>
@@ -138,6 +153,7 @@
           data-id="{{item.id}}"
           aria-label="{{item.name}}，{{item.specialty}}{{selectedTherapist.id === item.id ? '，已选择' : ''}}"
           aria-checked="{{selectedTherapist.id === item.id}}"
+          aria-disabled="{{interactionLocked}}"
           bindtap="selectTherapist"
         >
           <view class="therapist-avatar tone-{{item.tone}}">{{item.mark}}</view>
@@ -158,11 +174,18 @@
     <view wx:if="{{summaryExpanded}}" class="expanded-summary" aria-label="预约摘要">
       <view class="expanded-summary-head">
         <text class="expanded-summary-title">预约摘要</text>
-        <button class="summary-close" aria-label="收起预约摘要" bindtap="hideBookingSummary">收起</button>
+        <button wx:if="{{!interactionLocked}}" class="summary-close" aria-label="收起预约摘要" bindtap="hideBookingSummary">收起</button>
       </view>
-      <text class="expanded-summary-line">金宝店｜{{guestCount}} 位｜{{selectedService.name}} {{selectedService.durationMinutes}} 分钟</text>
+      <text class="expanded-summary-line">{{storeName}}｜{{guestCount}} 位｜{{selectedService.name}} {{selectedService.durationMinutes}} 分钟</text>
       <text class="expanded-summary-line">{{selectedDateLabel}} {{selectedTime}}｜{{selectedTherapist.name}}｜预计 {{totalLabel}}</text>
-      <text class="demo-notice">演示数据，尚未创建预约</text>
+      <view
+        wx:if="{{bookingMessage}}"
+        class="booking-status is-{{bookingTone}}"
+        aria-live="polite"
+      >
+        <text>{{bookingMessage}}</text>
+        <text wx:if="{{confirmationDeadline}}" class="confirmation-deadline">门店确认截止 {{confirmationDeadline}}</text>
+      </view>
     </view>
 
     <view class="booking-bar-main">
@@ -171,12 +194,14 @@
         <text class="summary-price">{{selectedDateLabel}} · 预计 {{totalLabel}}</text>
       </view>
       <button
-        class="continue-button"
-        aria-label="预览完整预约摘要"
+        class="continue-button {{primaryActionDisabled ? 'is-disabled' : ''}}"
+        loading="{{submitting}}"
+        aria-disabled="{{primaryActionDisabled}}"
+        aria-label="{{primaryActionLabel}}"
         aria-expanded="{{summaryExpanded}}"
-        bindtap="showBookingSummary"
+        bindtap="handlePrimaryAction"
       >
-        预览预约摘要
+        {{primaryActionLabel}}
       </button>
     </view>
   </view>

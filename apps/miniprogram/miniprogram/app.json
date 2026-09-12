@@ -1,5 +1,9 @@
 {
-  "pages": ["pages/index/index"],
+  "pages": [
+    "pages/index/index",
+    "pages/receptions/index",
+    "pages/reception-detail/index"
+  ],
   "window": {
     "navigationBarTitleText": "得闲预约",
     "navigationBarBackgroundColor": "#1f4435",

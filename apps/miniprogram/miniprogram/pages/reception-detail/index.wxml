@@ -1,0 +1,63 @@
+<view class="page-shell">
+  <view wx:if="{{loading && !detail}}" class="state-panel" aria-live="polite">
+    <view class="loading-mark"></view>
+    <text class="state-title">正在刷新预约状态</text>
+    <text class="state-copy">请稍候，结果以门店系统的最新记录为准。</text>
+  </view>
+
+  <view wx:elif="{{errorMessage && !detail}}" class="state-panel is-error" aria-live="assertive">
+    <text class="state-title">暂时无法查看详情</text>
+    <text class="state-copy">{{errorMessage}}</text>
+    <button class="primary-button" bindtap="loadDetail">重新加载</button>
+  </view>
+
+  <block wx:elif="{{detail}}">
+    <view class="status-panel tone-{{detail.statusTone}}" aria-live="polite">
+      <view class="status-topline">
+        <text class="status-title">{{detail.statusTitle}}</text>
+        <text class="status-pill">{{detail.statusLabel}}</text>
+      </view>
+      <text class="status-message">{{detail.statusMessage}}</text>
+      <text wx:if="{{detail.deadlineLabel}}" class="deadline">门店确认截止 {{detail.deadlineLabel}}</text>
+    </view>
+
+    <view wx:if="{{errorMessage}}" class="inline-error" aria-live="polite">
+      <text>{{errorMessage}}</text>
+      <button class="text-button" bindtap="loadDetail">再次刷新</button>
+    </view>
+
+    <view class="detail-section">
+      <text class="section-title">到店信息</text>
+      <text class="store-name">{{detail.storeName}}</text>
+      <text class="appointment-time">{{detail.dateTimeLabel}}</text>
+      <view class="detail-row">
+        <text>预约人数</text>
+        <text>{{detail.guestCount}} 位</text>
+      </view>
+      <view class="detail-row">
+        <text>预计合计</text>
+        <text class="amount">{{detail.amountLabel}}</text>
+      </view>
+    </view>
+
+    <view class="detail-section">
+      <text class="section-title">服务安排</text>
+      <view wx:for="{{detail.guests}}" wx:key="id" class="guest-detail">
+        <view class="guest-topline">
+          <text class="service-name">{{item.serviceItemName}}</text>
+          <text class="guest-amount">{{item.amountLabel}}</text>
+        </view>
+        <text class="guest-meta">{{item.therapistName}} · {{item.timeLabel}}</text>
+        <text class="guest-meta">服务 {{item.durationMinutes}} 分钟</text>
+      </view>
+    </view>
+
+    <view class="action-panel">
+      <button class="secondary-button" loading="{{loading}}" aria-disabled="{{loading}}" bindtap="loadDetail">
+        {{loading ? '正在刷新' : '刷新最新状态'}}
+      </button>
+      <button wx:if="{{detail.canRebook}}" class="primary-button" bindtap="createBooking">重新预约</button>
+      <text class="action-note">如需人工协助，请联系门店并提供预约编号末 8 位：{{detail.referenceLabel}}</text>
+    </view>
+  </block>
+</view>
