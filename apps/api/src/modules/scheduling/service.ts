@@ -132,7 +132,7 @@ export async function loadLeaveWorkbench(
               therapist.id AS therapist_id,
               therapist.name AS therapist_name,
               guest.id AS guest_id,
-              service.name AS service_item_name,
+              coalesce(guest.service_item_name_snapshot, service.name) AS service_item_name,
               guest_therapist.name AS guest_therapist_name,
               room.name AS room_name,
               bed.name AS bed_name,

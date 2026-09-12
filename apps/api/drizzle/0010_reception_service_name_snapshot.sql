@@ -1,0 +1,1 @@
+ALTER TABLE "reception_guests" ADD COLUMN "service_item_name_snapshot" text;

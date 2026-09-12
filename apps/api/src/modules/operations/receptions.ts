@@ -119,7 +119,7 @@ async function readRecords(
      JOIN LATERAL (
        SELECT min(g.service_start_at) start_at, max(g.service_end_at) end_at,
          jsonb_agg(jsonb_build_object(
-           'id', g.id, 'serviceItemName', s.name, 'therapistName', t.name,
+           'id', g.id, 'serviceItemName', coalesce(g.service_item_name_snapshot, s.name), 'therapistName', t.name,
            'roomName', room.name, 'bedName', bed.name, 'serviceStartAt', g.service_start_at,
            'serviceEndAt', g.service_end_at, 'quoteCents', g.quote_cents::text
          ) ORDER BY g.service_start_at, g.id) items

@@ -505,7 +505,7 @@ export async function listCustomerReceptions(
             WHERE guest.reception_id = reception.id
          ) AS guest_count ON true
          JOIN LATERAL (
-           SELECT service.name AS service_item_name,
+            SELECT coalesce(guest.service_item_name_snapshot, service.name) AS service_item_name,
                   therapist.name AS therapist_name,
                   guest.service_start_at,
                   guest.service_end_at
@@ -559,7 +559,7 @@ export async function getCustomerReception(
               reception.created_at,
               reception.updated_at,
               count(*) OVER ()::text AS guest_count,
-              first_value(service.name) OVER guest_order AS service_item_name,
+              first_value(coalesce(guest.service_item_name_snapshot, service.name)) OVER guest_order AS service_item_name,
               first_value(therapist.name) OVER guest_order AS therapist_name,
               first_value(guest.service_start_at) OVER guest_order AS service_start_at,
               first_value(guest.service_end_at) OVER guest_order AS service_end_at,
@@ -571,7 +571,7 @@ export async function getCustomerReception(
               ) AS invalidated_by_leave,
               guest.id AS guest_id,
               guest.client_guest_id,
-              service.name AS guest_service_item_name,
+              coalesce(guest.service_item_name_snapshot, service.name) AS guest_service_item_name,
               therapist.name AS guest_therapist_name,
               guest.service_start_at AS guest_service_start_at,
               guest.service_end_at AS guest_service_end_at,
@@ -1347,6 +1347,27 @@ async function insertReception(
   timeZone: string,
   policy?: BookingPolicyPayloadV2,
 ) {
+  const serviceIds = [
+    ...new Set(
+      candidate.assignments.map((assignment) => assignment.serviceItemId),
+    ),
+  ];
+  const serviceNamesResult = await client.query<{ id: string; name: string }>(
+    `SELECT id, name
+       FROM service_items
+      WHERE store_id = $1 AND id = ANY($2::uuid[])`,
+    [candidate.storeId, serviceIds],
+  );
+  const serviceNames = new Map(
+    serviceNamesResult.rows.map((service) => [service.id, service.name]),
+  );
+  if (serviceNames.size !== serviceIds.length) {
+    throw new AppError(
+      409,
+      "CANDIDATE_CHANGED",
+      "服务项目已经变化，请重新确认",
+    );
+  }
   const firstWorkAt = earliestPrepareAt(candidate.assignments);
   const timedDeadline =
     candidate.version === 2 && policy
@@ -1414,6 +1435,7 @@ async function insertReception(
     const guestResult = await client.query<{ id: string }>(
       `INSERT INTO reception_guests (
          store_id, reception_id, client_guest_id, service_item_id,
+         service_item_name_snapshot,
          therapist_resource_id, room_resource_id, bed_resource_id,
          service_start_at, service_end_at, quote_cents,
          service_config_version, store_config_version,
@@ -1423,7 +1445,7 @@ async function insertReception(
          rule_snapshot
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-         $11, $12, $13, $14, $15, $16, $17, $18::jsonb
+         $11, $12, $13, $14, $15, $16, $17, $18, $19::jsonb
        )
        RETURNING id`,
       [
@@ -1431,6 +1453,7 @@ async function insertReception(
         receptionId,
         assignment.clientGuestId,
         assignment.serviceItemId,
+        serviceNames.get(assignment.serviceItemId),
         assignment.therapistResourceId,
         assignment.roomResourceId,
         assignment.bedResourceId,

@@ -111,6 +111,31 @@ describe("admin reception list and detail integration", () => {
     expect(customer.body).not.toContain("roomName");
     expect(customer.body).not.toContain("maskedPhone");
   });
+  it("uses the reception name snapshot in admin list and detail", async () => {
+    const id = await hold(12);
+    await database.pool.query(
+      "UPDATE service_items SET name='已改名护理' WHERE id=$1",
+      [fixture.serviceId],
+    );
+    try {
+      const list = await app.inject({
+        method: "GET",
+        url: `/api/v1/admin/receptions?serviceDate=${day(
+          new Date(fixture.start.getTime() + 12 * 3600000),
+        )}&receptionId=${id}`,
+        headers: fixture.manager.headers,
+      });
+      const item = (await detail(id)).json().item as ReceptionRecord;
+      expect(list.statusCode, list.body).toBe(200);
+      expect(list.json().items[0].guests[0].serviceItemName).toBe("舒缓护理");
+      expect(item.guests[0]?.serviceItemName).toBe("舒缓护理");
+    } finally {
+      await database.pool.query(
+        "UPDATE service_items SET name='舒缓护理' WHERE id=$1",
+        [fixture.serviceId],
+      );
+    }
+  });
   it("treats expired pending rows consistently without a cleanup worker, including zero-match totals", async () => {
     const id = await hold(3);
     await database.pool.query(

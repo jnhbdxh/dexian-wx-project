@@ -673,6 +673,12 @@ describe.runIf(hasDatabase)("scheduling leave integration", () => {
     const confirmedId = await createReception("confirmed", [
       { therapistId, roomId, bedId, startAt: confirmedStart },
     ]);
+    await database.pool.query(
+      `UPDATE reception_guests
+          SET service_item_name_snapshot = '请假影响历史项目'
+        WHERE reception_id = $1`,
+      [confirmedId],
+    );
     const pendingSnapshotBefore = await database.pool.query<{
       reception_quote_cents: number;
       guest_quote_cents: number;
@@ -791,7 +797,7 @@ describe.runIf(hasDatabase)("scheduling leave integration", () => {
           reasonPrivate: "已确认的个人请假",
           guests: expect.arrayContaining([
             expect.objectContaining({
-              serviceItemName: expect.any(String),
+              serviceItemName: "请假影响历史项目",
               therapistName: expect.any(String),
               roomName: expect.any(String),
               bedName: expect.any(String),

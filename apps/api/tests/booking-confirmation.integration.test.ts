@@ -53,6 +53,7 @@ function staffHeaders(
 
 async function createPendingReception(
   confirmationDeadline = new Date(Date.now() + 60_000),
+  serviceItemNameSnapshot: string | null = null,
 ) {
   const reception = await database.pool.query<{ id: string }>(
     `INSERT INTO receptions (
@@ -70,6 +71,7 @@ async function createPendingReception(
   const guest = await database.pool.query<{ id: string }>(
     `INSERT INTO reception_guests (
        store_id, reception_id, client_guest_id, service_item_id,
+       service_item_name_snapshot,
        therapist_resource_id, room_resource_id, bed_resource_id,
        service_start_at, service_end_at, quote_cents,
        service_config_version, store_config_version,
@@ -78,13 +80,14 @@ async function createPendingReception(
        facility_cleanup_minutes_snapshot, rest_minutes_snapshot,
        rule_snapshot
      ) VALUES (
-       $1, $2, 'guest-1', $3, $4, $5, $6, $7, $8, 9500,
+       $1, $2, 'guest-1', $3, $4, $5, $6, $7, $8, $9, 9500,
        1, 1, 60, 0, 0, 0, 0, '{}'::jsonb
      ) RETURNING id`,
     [
       storeId,
       receptionId,
       serviceItemId,
+      serviceItemNameSnapshot,
       therapistId,
       roomId,
       bedId,
@@ -406,7 +409,10 @@ describe.runIf(hasDatabase)("booking confirmation integration", () => {
   });
 
   it("lists active pending confirmations with operator-ready details", async () => {
-    const { receptionId } = await createPendingReception();
+    const { receptionId } = await createPendingReception(
+      new Date(Date.now() + 60_000),
+      `确认历史项目-${suffix}`,
+    );
     const response = await app.inject({
       method: "GET",
       url: "/api/v1/admin/operations/overview",
@@ -434,7 +440,7 @@ describe.runIf(hasDatabase)("booking confirmation integration", () => {
       guests: [
         {
           clientGuestId: "guest-1",
-          serviceItemName: `确认测试项目-${suffix}`,
+          serviceItemName: `确认历史项目-${suffix}`,
           therapistName: `确认测试美容师-${suffix}`,
           roomName: `确认测试房间-${suffix}`,
           bedName: `确认测试床位-${suffix}`,

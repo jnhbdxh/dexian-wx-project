@@ -602,6 +602,7 @@ export const receptionGuests = pgTable(
     receptionId: uuid("reception_id").notNull(),
     clientGuestId: text("client_guest_id").notNull(),
     serviceItemId: uuid("service_item_id").notNull(),
+    serviceItemNameSnapshot: text("service_item_name_snapshot"),
     therapistResourceId: uuid("therapist_resource_id").notNull(),
     roomResourceId: uuid("room_resource_id").notNull(),
     bedResourceId: uuid("bed_resource_id").notNull(),

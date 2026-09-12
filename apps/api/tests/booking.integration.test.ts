@@ -1177,6 +1177,46 @@ describe.runIf(hasDatabase)("booking hold integration", () => {
       ],
     });
 
+    const storedName = await database.pool.query<{
+      service_item_name_snapshot: string | null;
+    }>(
+      `SELECT service_item_name_snapshot
+         FROM reception_guests
+        WHERE reception_id = $1`,
+      [firstReceptionId],
+    );
+    const originalName = `预约测试项目-${suffix}`;
+    expect(storedName.rows[0]?.service_item_name_snapshot).toBe(originalName);
+    await database.pool.query(
+      "UPDATE service_items SET name = $2 WHERE id = $1",
+      [serviceItemId, `改名后项目-${suffix}`],
+    );
+    try {
+      const renamedList = await app.inject({
+        method: "GET",
+        url: "/api/v1/receptions",
+        headers: { authorization: `Bearer ${customerToken}` },
+      });
+      const renamedDetail = await app.inject({
+        method: "GET",
+        url: `/api/v1/receptions/${firstReceptionId}`,
+        headers: { authorization: `Bearer ${customerToken}` },
+      });
+      const renamedSummary = renamedList
+        .json()
+        .items.find(
+          (item: { receptionId: string }) =>
+            item.receptionId === firstReceptionId,
+        );
+      expect(renamedSummary.serviceItemName).toBe(originalName);
+      expect(renamedDetail.json().guests[0].serviceItemName).toBe(originalName);
+    } finally {
+      await database.pool.query(
+        "UPDATE service_items SET name = $2 WHERE id = $1",
+        [serviceItemId, originalName],
+      );
+    }
+
     const outsiderToken = `booking-outsider-${suffix}`;
     const outsider = await database.pool.query<{ id: string }>(
       `INSERT INTO customers (display_name) VALUES ($1) RETURNING id`,

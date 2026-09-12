@@ -93,7 +93,7 @@ async function loadPendingConfirmations(database: Database, storeId: string) {
             pending.created_at AS reception_created_at,
             guest.id AS guest_id,
             guest.client_guest_id,
-            service.name AS service_item_name,
+             coalesce(guest.service_item_name_snapshot, service.name) AS service_item_name,
             therapist.name AS therapist_name,
             room.name AS room_name,
             bed.name AS bed_name,

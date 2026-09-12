@@ -136,7 +136,8 @@ export async function getResourceCalendar(
       `SELECT allocation.id, allocation.resource_id, allocation.reception_id,
            allocation.reception_guest_id,
            coalesce(nullif(trim(customer.display_name), ''), '未留姓名') AS customer_name,
-           service.name AS service_item_name, reception.state AS reception_state,
+           coalesce(guest.service_item_name_snapshot, service.name) AS service_item_name,
+           reception.state AS reception_state,
            reception.confirmation_deadline, allocation.segment_kind,
            allocation.start_at, allocation.end_at, allocation.expires_at,
            EXISTS (

@@ -426,7 +426,8 @@ async function findPolicyImpacts(
   const rows = await client.query<ImpactRow>(
     `SELECT reception.id AS reception_id, guest.id AS guest_id, reception.state,
       coalesce(nullif(trim(customer.display_name), ''), '未留姓名') AS customer_name,
-      service.name AS service_item_name, guest.service_start_at, guest.service_end_at
+      coalesce(guest.service_item_name_snapshot, service.name) AS service_item_name,
+      guest.service_start_at, guest.service_end_at
       FROM receptions reception
       JOIN customers customer ON customer.id = reception.customer_id
       JOIN reception_guests guest ON guest.store_id = reception.store_id

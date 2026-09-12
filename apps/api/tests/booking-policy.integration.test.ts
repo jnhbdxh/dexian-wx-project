@@ -316,6 +316,12 @@ describe("booking policy integration", () => {
     });
     expect(hold.statusCode, hold.body).toBe(201);
     legacyReceptionId = hold.json().receptionId;
+    await database.pool.query(
+      `UPDATE reception_guests
+          SET service_item_name_snapshot = '政策影响历史项目'
+        WHERE reception_id = $1`,
+      [legacyReceptionId],
+    );
 
     const closedDraft = await saveDraft(closedEveryDay);
     closedDraftRevisionId = closedDraft.json().draftRevisionId;
@@ -338,7 +344,12 @@ describe("booking policy integration", () => {
       expandedDays: expect.arrayContaining([
         expect.objectContaining({ status: "closed", intervals: [] }),
       ]),
-      impacts: [expect.objectContaining({ receptionId: legacyReceptionId })],
+      impacts: [
+        expect.objectContaining({
+          receptionId: legacyReceptionId,
+          serviceItemName: "政策影响历史项目",
+        }),
+      ],
     });
 
     const unusedAvailability = await app.inject({

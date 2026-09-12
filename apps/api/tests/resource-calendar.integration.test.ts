@@ -192,6 +192,30 @@ describe("admin resource calendar integration", () => {
     expect(response.body).not.toContain("内部");
   });
 
+  it("uses the reception name snapshot after the catalog name changes", async () => {
+    await database.pool.query(
+      "UPDATE service_items SET name='已改名护理' WHERE id=$1",
+      [fixture.serviceId],
+    );
+    try {
+      const body = (
+        await calendar(shanghaiDay(fixture.start))
+      ).json() as ResourceCalendar;
+      const guestAllocations = body.allocations.filter(
+        (item) => item.receptionId === receptionId && item.guestId,
+      );
+      expect(guestAllocations.length).toBeGreaterThan(0);
+      expect(
+        guestAllocations.every((item) => item.serviceItemName === "舒缓护理"),
+      ).toBe(true);
+    } finally {
+      await database.pool.query(
+        "UPDATE service_items SET name='舒缓护理' WHERE id=$1",
+        [fixture.serviceId],
+      );
+    }
+  });
+
   it("shows a cross-midnight service on both data dates and excludes expired holds", async () => {
     const firstDay = shanghaiDay(fixture.start);
     const nextDay = shanghaiDay(
