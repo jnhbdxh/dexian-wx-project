@@ -136,7 +136,9 @@ h1 {
   border-radius: 10px 4px;
 }
 .user-actions {
+  flex-wrap: wrap;
   gap: 14px;
+  justify-content: flex-end;
 }
 .signed-in-user {
   color: #43534a;
@@ -838,6 +840,184 @@ h1 {
   line-height: 1.65;
 }
 
+.payment-action-message,
+.payment-channel-warning {
+  margin: 0 0 16px;
+  padding: 13px 15px;
+  border: 1px solid #c9ddcf;
+  border-radius: 10px;
+  line-height: 1.55;
+}
+.payment-action-message {
+  color: #285d40;
+  background: #edf6f0;
+}
+.payment-channel-warning {
+  color: #75400d;
+  background: #fff6e9;
+  border-color: #eddbbc;
+}
+.payment-review-workbench {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.78fr) minmax(500px, 1.45fr);
+  min-height: 520px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgb(35 63 47 / 8%);
+}
+.payment-review-list {
+  overflow-y: auto;
+  background: #f8faf8;
+  border-right: 1px solid var(--line);
+}
+.payment-review-item {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 18px 20px;
+  color: #46574d;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 160ms ease-out;
+}
+.payment-review-item:hover {
+  background: #eef4f0;
+}
+.payment-review-item.is-selected {
+  background: var(--surface);
+  outline: 1px solid #9ab8a5;
+  outline-offset: -1px;
+}
+.payment-review-item > span:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.payment-review-item strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--brand-900);
+  font-size: 16px;
+}
+.payment-review-item small {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  color: #8a4a0f;
+  font-size: 12px;
+  font-weight: 700;
+  background: #fff1df;
+  border-radius: 999px;
+}
+.payment-review-item > span:not(:first-child) {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.payment-load-more {
+  padding: 16px;
+  text-align: center;
+}
+.payment-review-detail {
+  min-width: 0;
+  padding: 28px 32px;
+}
+.payment-review-detail > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.payment-review-detail h2 {
+  margin: 9px 0 5px;
+  overflow-wrap: anywhere;
+  color: var(--brand-900);
+  font-size: 25px;
+  letter-spacing: -0.02em;
+}
+.payment-review-detail header p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.payment-review-detail header > strong {
+  color: var(--brand-900);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.payment-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 28px;
+  margin: 24px 0;
+}
+.payment-facts div {
+  min-width: 0;
+}
+.payment-facts dt {
+  margin-bottom: 5px;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+.payment-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #31453a;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.payment-error-detail {
+  padding: 16px 18px;
+  background: #fff8ec;
+  border: 1px solid #eddbbc;
+  border-radius: 10px;
+}
+.payment-error-detail strong {
+  color: #68401a;
+}
+.payment-error-detail p {
+  margin: 7px 0 4px;
+  overflow-wrap: anywhere;
+  color: #674c31;
+  line-height: 1.6;
+}
+.payment-error-detail small {
+  color: #846a50;
+  overflow-wrap: anywhere;
+}
+.payment-review-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 26px;
+}
+.payment-review-action p,
+.payment-permission-note {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.payment-review-action .el-button {
+  min-width: 160px;
+  min-height: 44px;
+}
+.payment-permission-note {
+  margin-top: 12px;
+  color: var(--warning);
+}
+
 @media (max-width: 820px) {
   .dashboard-page {
     padding: 18px 16px 36px;
@@ -886,6 +1066,10 @@ h1 {
   }
   .scheduling-workbench {
     grid-template-columns: 1fr;
+  }
+  .payment-review-workbench {
+    grid-template-columns: minmax(230px, 0.72fr) minmax(420px, 1.28fr);
+    overflow-x: auto;
   }
   .leave-panel {
     position: static;
@@ -1013,6 +1197,54 @@ h1 {
   .conflict-load-more {
     width: 100%;
     flex-direction: column;
+  }
+  .payment-review-workbench {
+    display: block;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .payment-review-list {
+    display: flex;
+    gap: 10px;
+    margin: 0 -16px 14px;
+    padding: 0 16px 8px;
+    overflow-x: auto;
+    background: transparent;
+    border: 0;
+    scroll-snap-type: x proximity;
+  }
+  .payment-review-item {
+    min-width: min(290px, 84vw);
+    background: #f8faf8;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    scroll-snap-align: start;
+  }
+  .payment-load-more {
+    display: grid;
+    min-width: 150px;
+    place-items: center;
+  }
+  .payment-review-detail {
+    padding: 22px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .payment-review-detail > header,
+  .payment-review-action {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .payment-facts {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .payment-review-action .el-button {
+    width: 100%;
   }
 }
 

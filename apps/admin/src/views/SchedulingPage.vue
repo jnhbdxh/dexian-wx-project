@@ -366,6 +366,16 @@ async function openConfirmationWorkbench() {
   await router.push("/dashboard");
 }
 
+async function openResourceCalendar() {
+  if (submitting.value || resultUnverified.value) return;
+  await router.push("/calendar");
+}
+
+async function openPaymentReview() {
+  if (submitting.value || resultUnverified.value) return;
+  await router.push("/payments");
+}
+
 async function signOut() {
   if (submitting.value || resultUnverified.value) return;
   await logout();
@@ -435,6 +445,20 @@ onBeforeUnmount(() => {
           @click="openConfirmationWorkbench"
         >
           今日待确认
+        </el-button>
+        <el-button
+          plain
+          :disabled="submitting || resultUnverified"
+          @click="openResourceCalendar"
+        >
+          预约日历
+        </el-button>
+        <el-button
+          plain
+          :disabled="submitting || resultUnverified"
+          @click="openPaymentReview"
+        >
+          异常支付
         </el-button>
         <span class="signed-in-user">{{ workbench.user.displayName }}</span>
         <el-button

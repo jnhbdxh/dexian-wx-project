@@ -55,6 +55,11 @@ export interface OperationsOverview {
   pendingConfirmations: PendingConfirmation[];
 }
 
+export interface ConfirmReceptionIdentity {
+  staffUserId: string;
+  storeId: string;
+}
+
 export interface LeaveConflictGuest {
   id: string;
   serviceItemName: string;
@@ -109,6 +114,37 @@ export interface CreateLeaveResult {
   conflicts: Array<{ conflictId: string; receptionId: string }>;
 }
 
+export type PaymentState =
+  | "created"
+  | "processing"
+  | "succeeded"
+  | "failed"
+  | "unknown"
+  | "manual_review";
+
+export interface PaymentReviewItem {
+  paymentId: string;
+  receptionId: string;
+  outTradeNo: string;
+  state: PaymentState;
+  customerName: string;
+  amountCents: string;
+  collectionDeadline: string;
+  checkAttempts: number;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+  nextCheckAt: string | null;
+  updatedAt: string;
+}
+
+export interface PaymentReviewQueue {
+  user: StaffUser;
+  canReconcilePayments: boolean;
+  channelConfigured: boolean;
+  payments: PaymentReviewItem[];
+  nextCursor: string | null;
+}
+
 function readCookie(name: string): string | undefined {
   return document.cookie
     .split("; ")
@@ -118,7 +154,7 @@ function readCookie(name: string): string | undefined {
     .join("=");
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const method = init?.method?.toUpperCase() ?? "GET";
   const headers = new Headers(init?.headers);
   if (init?.body !== undefined && init.body !== null) {
@@ -170,6 +206,7 @@ export function confirmReception(
   receptionId: string,
   version: number,
   idempotencyKey: string,
+  identity: ConfirmReceptionIdentity,
 ) {
   return request<{
     receptionId: string;
@@ -181,6 +218,8 @@ export function confirmReception(
     headers: {
       "Idempotency-Key": idempotencyKey,
       "If-Match": `"${version}"`,
+      "X-Initiating-Staff-User-Id": identity.staffUserId,
+      "X-Initiating-Store-Id": identity.storeId,
     },
   });
 }
@@ -208,6 +247,20 @@ export function createLeave(
       initiatingStoreId: identity.storeId,
     }),
   });
+}
+
+export function getPaymentReviewQueue(afterPaymentId?: string) {
+  const query = afterPaymentId
+    ? `?afterPaymentId=${encodeURIComponent(afterPaymentId)}`
+    : "";
+  return request<PaymentReviewQueue>(`/api/v1/admin/payments/review${query}`);
+}
+
+export function reconcilePayment(paymentId: string) {
+  return request<PaymentReviewItem>(
+    `/api/v1/admin/payments/${paymentId}/reconcile`,
+    { method: "POST" },
+  );
 }
 
 export function logout() {

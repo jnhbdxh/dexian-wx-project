@@ -2,9 +2,13 @@
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { defineComponent } from "vue";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiRequestError } from "../lib/api";
+import {
+  loadReceptionConfirmation,
+  saveReceptionConfirmation,
+} from "../lib/reception-confirmation-recovery";
 
 const mocks = vi.hoisted(() => ({
   confirmReception: vi.fn(),
@@ -66,12 +70,46 @@ function pendingReception(
   };
 }
 
+beforeEach(() => {
+  sessionStorage.clear();
+});
+
 afterEach(() => {
   vi.useRealTimers();
   vi.clearAllMocks();
+  sessionStorage.clear();
 });
 
 describe("confirmation workbench interaction", () => {
+  it("redirects a reloaded workbench to the existing recovery flow", async () => {
+    const savedAttempt = {
+      receptionId: "33333333-3333-4333-8333-333333333333",
+      version: 2,
+      key: "44444444-4444-4444-8444-444444444444",
+      staffUserId: "11111111-1111-4111-8111-111111111111",
+      storeId: "22222222-2222-4222-8222-222222222222",
+    };
+    saveReceptionConfirmation(savedAttempt);
+
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: {
+          ElButton: ElButtonStub,
+          ElResult: true,
+          ElSkeleton: true,
+        },
+      },
+    });
+    await flushPromises();
+
+    expect(mocks.replace).toHaveBeenCalledWith("/receptions");
+    expect(mocks.getOperationsOverview).not.toHaveBeenCalled();
+    expect(mocks.confirmReception).not.toHaveBeenCalled();
+    expect(loadReceptionConfirmation()).toEqual(savedAttempt);
+
+    wrapper.unmount();
+  });
+
   it("keeps an in-flight result bound and replays the same request after local expiry", async () => {
     vi.useFakeTimers();
     const now = Date.parse("2026-09-10T01:00:00.000Z");
@@ -208,6 +246,167 @@ describe("confirmation workbench interaction", () => {
     expect(mocks.confirmReception.mock.calls[2]).toEqual(firstCall);
     expect(wrapper.text()).not.toContain("林女士");
     expect(wrapper.find("#detail-title").text()).toBe("陈女士");
+
+    wrapper.unmount();
+  });
+
+  it("preserves the original request and offers original-account login after identity changes", async () => {
+    const staffUserId = "11111111-1111-4111-8111-111111111111";
+    const storeId = "22222222-2222-4222-8222-222222222222";
+    const receptionId = "33333333-3333-4333-8333-333333333333";
+    const now = Date.parse("2026-09-10T01:00:00.000Z");
+    mocks.getOperationsOverview.mockResolvedValue({
+      user: {
+        id: staffUserId,
+        storeId,
+        username: "frontdesk",
+        displayName: "前台",
+      },
+      overview: {
+        stage: "booking-confirmation",
+        serverNow: new Date(now).toISOString(),
+        canConfirmReceptions: true,
+        pendingConfirmations: [
+          pendingReception(
+            receptionId,
+            "林女士",
+            new Date(now + 60_000).toISOString(),
+          ),
+        ],
+      },
+    });
+    mocks.confirmReception.mockRejectedValue(
+      new ApiRequestError(
+        409,
+        "RECEPTION_CONFIRM_IDENTITY_CHANGED",
+        "当前登录员工或门店已变化，请切回原账号后继续核实",
+        "request-identity",
+        {},
+      ),
+    );
+
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: {
+          ElButton: ElButtonStub,
+          ElResult: true,
+          ElSkeleton: true,
+        },
+      },
+    });
+    await flushPromises();
+
+    await wrapper.find(".confirmation-footer button").trigger("click");
+    await flushPromises();
+
+    const originalCall = mocks.confirmReception.mock.calls[0]!;
+    const savedAttempt = loadReceptionConfirmation();
+    expect(originalCall).toEqual([
+      receptionId,
+      1,
+      savedAttempt?.key,
+      { staffUserId, storeId },
+    ]);
+    expect(savedAttempt).toEqual({
+      receptionId,
+      version: 1,
+      key: originalCall[2],
+      staffUserId,
+      storeId,
+    });
+    expect(wrapper.find(".confirmation-alert").text()).toContain(
+      "登录账号已经变化",
+    );
+    expect(wrapper.find(".confirmation-alert").text()).toContain(
+      "重新登录原账号并核实",
+    );
+
+    await wrapper.find(".confirmation-alert button").trigger("click");
+    await flushPromises();
+    expect(mocks.replace).toHaveBeenCalledWith({
+      path: "/login",
+      query: { redirect: "/receptions" },
+    });
+    expect(loadReceptionConfirmation()).toEqual(savedAttempt);
+
+    wrapper.unmount();
+  });
+
+  it("keeps an unknown request when its retry is denied before idempotency lookup", async () => {
+    const staffUserId = "11111111-1111-4111-8111-111111111111";
+    const storeId = "22222222-2222-4222-8222-222222222222";
+    const receptionId = "33333333-3333-4333-8333-333333333333";
+    const now = Date.parse("2026-09-10T01:00:00.000Z");
+    mocks.getOperationsOverview.mockResolvedValue({
+      user: {
+        id: staffUserId,
+        storeId,
+        username: "frontdesk",
+        displayName: "前台",
+      },
+      overview: {
+        stage: "booking-confirmation",
+        serverNow: new Date(now).toISOString(),
+        canConfirmReceptions: true,
+        pendingConfirmations: [
+          pendingReception(
+            receptionId,
+            "林女士",
+            new Date(now + 60_000).toISOString(),
+          ),
+        ],
+      },
+    });
+    mocks.confirmReception
+      .mockRejectedValueOnce(new TypeError("Network request failed"))
+      .mockRejectedValueOnce(
+        new ApiRequestError(
+          403,
+          "PERMISSION_DENIED",
+          "当前账号没有确认权限",
+          "request-forbidden",
+          {},
+        ),
+      );
+
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: {
+          ElButton: ElButtonStub,
+          ElResult: true,
+          ElSkeleton: true,
+        },
+      },
+    });
+    await flushPromises();
+
+    await wrapper.find(".confirmation-footer button").trigger("click");
+    await flushPromises();
+    const originalCall = mocks.confirmReception.mock.calls[0]!;
+    const savedAttempt = loadReceptionConfirmation();
+
+    await wrapper.find(".confirmation-alert button").trigger("click");
+    await flushPromises();
+
+    expect(mocks.confirmReception.mock.calls[1]).toEqual(originalCall);
+    expect(loadReceptionConfirmation()).toEqual(savedAttempt);
+    expect(wrapper.find(".confirmation-alert").text()).toContain(
+      "原确认结果仍待核实",
+    );
+    expect(wrapper.find(".confirmation-alert").text()).toContain(
+      "重新登录原账号并核实",
+    );
+    expect(
+      wrapper.find(".confirmation-footer button").attributes("disabled"),
+    ).toBeDefined();
+
+    await wrapper.find(".confirmation-alert button").trigger("click");
+    await flushPromises();
+    expect(mocks.replace).toHaveBeenCalledWith({
+      path: "/login",
+      query: { redirect: "/receptions" },
+    });
+    expect(loadReceptionConfirmation()).toEqual(savedAttempt);
 
     wrapper.unmount();
   });

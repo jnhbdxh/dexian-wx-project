@@ -17,6 +17,12 @@ import {
   type ConfirmationFailure,
 } from "../lib/confirmation";
 import {
+  clearReceptionConfirmation,
+  loadReceptionConfirmation,
+  saveReceptionConfirmation,
+  type ReceptionConfirmationAttempt,
+} from "../lib/reception-confirmation-recovery";
+import {
   classifyOverviewFailure,
   type OverviewFailure,
 } from "../lib/overview-error";
@@ -34,11 +40,7 @@ type DisplayConfirmationFailure = Exclude<
   ConfirmationFailure,
   { kind: "login" }
 >;
-interface ConfirmationAttempt {
-  receptionId: string;
-  version: number;
-  key: string;
-}
+type ConfirmationAttempt = ReceptionConfirmationAttempt;
 const confirmationFailure = ref<{
   attempt: ConfirmationAttempt;
   failure: DisplayConfirmationFailure;
@@ -149,32 +151,73 @@ async function submitConfirmation(retryAttempt?: ConfirmationAttempt) {
           receptionId: reception.receptionId,
           version: reception.version,
           key: crypto.randomUUID(),
+          staffUserId: user.value!.id,
+          storeId: user.value!.storeId,
         });
+  if (!retryAttempt && activeConfirmationAttempt.value !== attempt) {
+    try {
+      saveReceptionConfirmation(attempt);
+    } catch {
+      confirmationFailure.value = {
+        attempt,
+        failure: {
+          kind: "unavailable",
+          title: "无法保存核实记录",
+          message: "本次确认尚未发送，请保留当前页面并稍后重试。",
+          action: "close",
+        },
+      };
+      return;
+    }
+  }
   confirming.value = true;
   confirmationFailure.value = undefined;
   activeConfirmationAttempt.value = attempt;
   try {
-    await confirmReception(attempt.receptionId, attempt.version, attempt.key);
+    await confirmReception(attempt.receptionId, attempt.version, attempt.key, {
+      staffUserId: attempt.staffUserId,
+      storeId: attempt.storeId,
+    });
     pendingConfirmations.value = pendingConfirmations.value.filter(
       (item) => item.receptionId !== attempt.receptionId,
     );
     activeConfirmationAttempt.value = undefined;
     confirmationResultUnverified.value = false;
+    clearReceptionConfirmation();
     ElMessage.success(`${reception.customerName}的接待已确认`);
   } catch (error) {
     const result = classifyConfirmationFailure(error);
     if (result.kind === "login") {
-      await router.replace("/login");
+      await router.replace({
+        path: "/login",
+        query: { redirect: "/receptions" },
+      });
       return;
     }
     selectedReceptionId.value = attempt.receptionId;
+    if (result.kind === "forbidden" && confirmationResultUnverified.value) {
+      confirmationFailure.value = {
+        attempt,
+        failure: {
+          kind: "forbidden",
+          title: "原确认结果仍待核实",
+          message:
+            "当前账号无权核实原请求。请恢复原账号权限，或重新登录原账号后继续核实。",
+          action: "login",
+        },
+      };
+      return;
+    }
     confirmationFailure.value = { attempt, failure: result };
-    if (result.kind === "unavailable") {
+    if (result.kind === "unavailable" || result.kind === "identity") {
       confirmationResultUnverified.value = true;
     } else if (result.kind !== "busy") {
       confirmationResultUnverified.value = false;
     }
-    if (result.action !== "retry") activeConfirmationAttempt.value = undefined;
+    if (result.action !== "retry" && result.action !== "login") {
+      activeConfirmationAttempt.value = undefined;
+      clearReceptionConfirmation();
+    }
   } finally {
     confirming.value = false;
   }
@@ -184,6 +227,11 @@ async function handleConfirmationFailureAction() {
   const boundFailure = confirmationFailure.value;
   if (boundFailure?.failure.action === "refresh") {
     await loadOverview({ quiet: true });
+  } else if (boundFailure?.failure.action === "login") {
+    await router.replace({
+      path: "/login",
+      query: { redirect: "/receptions" },
+    });
   } else if (boundFailure?.failure.action === "retry") {
     await submitConfirmation(boundFailure.attempt);
   } else {
@@ -202,7 +250,21 @@ async function openScheduling() {
   await router.push("/scheduling");
 }
 
+async function openPaymentReview() {
+  if (confirming.value || confirmationResultUnverified.value) return;
+  await router.push("/payments");
+}
+
 onMounted(() => {
+  try {
+    if (loadReceptionConfirmation()) {
+      void router.replace("/receptions");
+      return;
+    }
+  } catch {
+    void router.replace("/receptions");
+    return;
+  }
   void loadOverview();
   clockTimer = setInterval(updateClock, 1_000);
 });
@@ -223,9 +285,37 @@ onBeforeUnmount(() => {
         <el-button
           plain
           :disabled="confirming || confirmationResultUnverified"
+          @click="router.push('/receptions')"
+        >
+          接待查询
+        </el-button>
+        <el-button
+          plain
+          :disabled="confirming || confirmationResultUnverified"
+          @click="router.push('/calendar')"
+        >
+          预约日历
+        </el-button>
+        <el-button
+          plain
+          :disabled="confirming || confirmationResultUnverified"
+          @click="router.push('/booking-policy')"
+        >
+          预约政策
+        </el-button>
+        <el-button
+          plain
+          :disabled="confirming || confirmationResultUnverified"
           @click="openScheduling"
         >
           请假与冲突
+        </el-button>
+        <el-button
+          plain
+          :disabled="confirming || confirmationResultUnverified"
+          @click="openPaymentReview"
+        >
+          异常支付
         </el-button>
         <span class="signed-in-user">{{ user.displayName }}</span>
         <el-button
@@ -423,11 +513,13 @@ onBeforeUnmount(() => {
               {{
                 selectedConfirmationFailure.action === "refresh"
                   ? "刷新待办"
-                  : selectedConfirmationFailure.action === "retry"
-                    ? confirmationResultUnverified
-                      ? "核实确认结果"
-                      : "再次确认"
-                    : "知道了"
+                  : selectedConfirmationFailure.action === "login"
+                    ? "重新登录原账号并核实"
+                    : selectedConfirmationFailure.action === "retry"
+                      ? confirmationResultUnverified
+                        ? "核实确认结果"
+                        : "再次确认"
+                      : "知道了"
               }}
             </el-button>
           </div>

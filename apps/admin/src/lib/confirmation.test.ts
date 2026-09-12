@@ -35,6 +35,7 @@ describe("confirmation presentation", () => {
   it.each([
     [401, "AUTH_REQUIRED", "login"],
     [403, "PERMISSION_DENIED", "forbidden"],
+    [409, "RECEPTION_CONFIRM_IDENTITY_CHANGED", "identity"],
     [409, "RECEPTION_EXPIRED", "expired"],
     [409, "VERSION_CONFLICT", "changed"],
     [409, "RESOURCE_BUSY_RETRY", "busy"],

@@ -15,6 +15,9 @@ afterEach(() => {
 
 describe("admin API request headers", () => {
   it("does not send a JSON content type when POST has no body", async () => {
+    let confirmationIdentity:
+      | { staffUserId: string | undefined; storeId: string | undefined }
+      | undefined;
     const received: Array<{
       body: string;
       contentType: string | undefined;
@@ -30,6 +33,14 @@ describe("admin API request headers", () => {
         body += chunk;
       });
       request.on("end", () => {
+        if (request.url?.endsWith("/confirm")) {
+          confirmationIdentity = {
+            staffUserId: request.headers["x-initiating-staff-user-id"] as
+              string | undefined,
+            storeId: request.headers["x-initiating-store-id"] as
+              string | undefined,
+          };
+        }
         received.push({
           body,
           contentType: request.headers["content-type"],
@@ -121,6 +132,10 @@ describe("admin API request headers", () => {
         "00000000-0000-4000-8000-000000000001",
         1,
         "confirmation-attempt-1",
+        {
+          staffUserId: "00000000-0000-4000-8000-000000000002",
+          storeId: "00000000-0000-4000-8000-000000000003",
+        },
       );
       await logout();
     } finally {
@@ -178,5 +193,9 @@ describe("admin API request headers", () => {
         path: "/api/v1/admin/auth/logout",
       },
     ]);
+    expect(confirmationIdentity).toEqual({
+      staffUserId: "00000000-0000-4000-8000-000000000002",
+      storeId: "00000000-0000-4000-8000-000000000003",
+    });
   });
 });

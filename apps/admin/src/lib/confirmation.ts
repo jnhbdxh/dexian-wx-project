@@ -3,10 +3,16 @@ import { ApiRequestError } from "./api";
 export type ConfirmationFailure =
   | { kind: "login" }
   | {
-      kind: "forbidden" | "expired" | "changed" | "busy" | "unavailable";
+      kind:
+        | "identity"
+        | "forbidden"
+        | "expired"
+        | "changed"
+        | "busy"
+        | "unavailable";
       title: string;
       message: string;
-      action: "refresh" | "retry" | "close";
+      action: "login" | "refresh" | "retry" | "close";
     };
 
 export function classifyConfirmationFailure(
@@ -20,6 +26,14 @@ export function classifyConfirmationFailure(
         title: "当前账号不能确认接待",
         message: error.message || "请联系店长为该账号分配确认接待权限。",
         action: "close",
+      };
+    }
+    if (error.code === "RECEPTION_CONFIRM_IDENTITY_CHANGED") {
+      return {
+        kind: "identity",
+        title: "登录账号已经变化",
+        message: error.message || "请重新登录原发起账号，再继续核实这笔确认。",
+        action: "login",
       };
     }
     if (error.code === "RECEPTION_EXPIRED") {

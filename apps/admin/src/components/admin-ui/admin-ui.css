@@ -1,0 +1,286 @@
+.admin-ui-page,
+.admin-ui-review,
+.admin-ui-popover {
+  --el-border-radius-base: 9px;
+  --el-font-size-base: 14px;
+  --el-text-color-primary: #203128;
+  --el-text-color-regular: #203128;
+  --el-text-color-secondary: #647168;
+  --el-text-color-placeholder: #68776d;
+  --el-text-color-disabled: #78847d;
+  --el-border-color: #cbd5ce;
+  --el-border-color-hover: #98aca0;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #f0f3f1;
+  --el-disabled-bg-color: #f0f3f1;
+  --el-disabled-border-color: #d9e1dc;
+  --el-disabled-text-color: #78847d;
+}
+.admin-ui-page {
+  width: min(var(--admin-ui-page-width, 1240px), 100%);
+  margin: auto;
+  padding: 20px 32px 48px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.admin-ui-page *,
+.admin-ui-review * {
+  min-width: 0;
+}
+.admin-ui-page .el-button,
+.admin-ui-review .el-button {
+  border-radius: 9px;
+  min-height: 44px;
+  height: auto;
+  white-space: normal;
+  line-height: 1.4;
+  padding: 11px 16px;
+}
+.admin-ui-page .el-button + .el-button,
+.admin-ui-review .el-button + .el-button {
+  margin-left: 0;
+}
+.admin-ui-page .el-input__wrapper,
+.admin-ui-page .el-select__wrapper,
+.admin-ui-review .el-select__wrapper {
+  min-height: 44px;
+  border-radius: 9px;
+  padding: 0 12px;
+}
+.admin-ui-page .el-textarea__inner {
+  border-radius: 9px;
+  padding: 10px 12px;
+  line-height: 1.6;
+}
+.admin-ui-page .el-input__inner {
+  line-height: 22px;
+}
+.admin-ui-page :is(.el-input__wrapper, .el-select__wrapper).is-focus,
+.admin-ui-page .el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--brand-600) inset;
+}
+.admin-ui-page .el-input__wrapper:has([aria-invalid="true"]),
+.admin-ui-page .el-textarea__inner[aria-invalid="true"] {
+  box-shadow: 0 0 0 1px var(--danger) inset;
+}
+.admin-ui-page .el-select,
+.admin-ui-review .el-select {
+  width: 100%;
+}
+.admin-ui-page .el-date-editor.el-input {
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+}
+.admin-ui-page :is(button, a, input, select, textarea):focus-visible,
+.admin-ui-review :is(button, a, input, select):focus-visible {
+  outline: 3px solid var(--brand-600);
+  outline-offset: 3px;
+}
+.admin-ui-topbar,
+.admin-ui-heading,
+.admin-ui-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.admin-ui-topbar {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--brand-900);
+}
+.admin-ui-topbar nav,
+.admin-ui-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.admin-ui-heading {
+  align-items: end;
+  margin: 28px 0 24px;
+}
+.admin-ui-page h1 {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.admin-ui-heading p {
+  color: var(--ink-muted);
+  margin: 8px 0 0;
+}
+.admin-ui-page h2 {
+  font-size: 20px;
+  line-height: 1.4;
+  margin: 0;
+  color: var(--brand-900);
+}
+.admin-ui-page h3 {
+  font-size: 16px;
+  margin: 24px 0 10px;
+}
+.admin-ui-page p {
+  overflow-wrap: anywhere;
+}
+.admin-ui-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+}
+.admin-ui-panel-heading {
+  margin-bottom: 16px;
+  align-items: start;
+}
+.admin-ui-filters {
+  margin-bottom: 24px;
+}
+.admin-ui-filters fieldset {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+.admin-ui-field {
+  flex: 1 1 160px;
+}
+.admin-ui-field > label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.admin-ui-field small {
+  display: block;
+  color: var(--ink-muted);
+  margin-top: 6px;
+}
+.admin-ui-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.admin-ui-feedback {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: #f7f9f7;
+}
+.admin-ui-feedback p {
+  margin: 4px 0;
+}
+.admin-ui-feedback .admin-ui-actions {
+  margin-top: 10px;
+}
+.admin-ui-feedback[data-tone="success"] {
+  background: var(--brand-100);
+  color: var(--brand-900);
+}
+.admin-ui-feedback[data-tone="warning"] {
+  background: #fff5e8;
+  color: #794710;
+  border-color: #e8cba2;
+}
+.admin-ui-feedback[data-tone="danger"] {
+  background: #fff2f1;
+  color: #922b25;
+  border-color: #e8c0bc;
+}
+.admin-ui-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 20px;
+}
+.admin-ui-pagination span {
+  font-variant-numeric: tabular-nums;
+}
+.admin-ui-copy {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+}
+.admin-ui-copy-text {
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+.admin-ui-copy-result {
+  flex-basis: 100%;
+  color: var(--ink-muted);
+}
+.admin-ui-copy-result:empty {
+  display: none;
+}
+.admin-ui-state {
+  display: inline-block;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  color: #46564c;
+  background: #f0f3f1;
+  white-space: nowrap;
+}
+.admin-ui-state[data-tone="success"] {
+  background: var(--brand-100);
+  color: var(--brand-900);
+}
+.admin-ui-state[data-tone="warning"] {
+  background: #fff5e8;
+  color: #794710;
+}
+.admin-ui-popover {
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  max-width: calc(100vw - 16px);
+}
+.admin-ui-popover .el-select-dropdown__item {
+  min-height: 44px;
+  height: auto;
+  line-height: 1.5;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  white-space: normal;
+}
+.admin-ui-popover .el-picker-panel {
+  max-width: calc(100vw - 18px);
+}
+.admin-ui-popover .el-picker-panel__content {
+  width: auto;
+  margin: 8px;
+}
+.admin-ui-popover .el-date-picker__header {
+  margin: 12px;
+}
+@media (max-width: 560px) {
+  .admin-ui-page h1 {
+    font-size: 28px;
+  }
+  .admin-ui-page {
+    padding: 16px 16px 32px;
+  }
+  .admin-ui-heading,
+  .admin-ui-topbar {
+    align-items: start;
+    flex-direction: column;
+  }
+  .admin-ui-panel {
+    padding: 18px;
+  }
+  .admin-ui-heading {
+    margin-top: 24px;
+  }
+}
