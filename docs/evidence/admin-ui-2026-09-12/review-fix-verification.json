@@ -1,0 +1,81 @@
+{
+  "date": "2026-09-12",
+  "scope": "Four P2 fixes; not full acceptance",
+  "interactions": [
+    {
+      "bottom": 592.6000213623047,
+      "check": "leave-success-390",
+      "focus": "保存处理结果",
+      "height": 844,
+      "top": 487.8000183105469,
+      "width": 390
+    },
+    {
+      "check": "leave-unknown-390",
+      "focus": "保存处理结果",
+      "height": 844,
+      "regionBottom": 648.1999969482422,
+      "regionTop": 493.3999938964844,
+      "verifyBottom": 633.4000244140625,
+      "verifyTop": 589.4000244140625
+    },
+    {
+      "bottom": 527,
+      "check": "leave-verified-390",
+      "focus": "保存处理结果",
+      "text": "保存结果已确定已核实原操作，请假已保存：小满 · 2026-09-15 14:00—18:00。 可以继续其他工作。仍有 2 组已确认接待待跟进请假已生效，原接待安排继续保留。需要联系顾客并由有权限的员工处理安排。",
+      "top": 279
+    },
+    {
+      "check": "field-errors-390",
+      "endValue": "13:00",
+      "error": "结束时间必须晚于开始时间；本示例仅登记同一天内的请假。",
+      "fieldTop": 377.2000122070313,
+      "focus": "v-8-end",
+      "invalid": "true",
+      "reasonError": "请填写内部请假原因。"
+    },
+    {
+      "check": "next-error-focus-390",
+      "description": "v-8-reason-help v-8-reason-error",
+      "focus": "v-8-reason",
+      "invalid": "true"
+    },
+    {
+      "check": "detail-failure-390",
+      "feedbackTop": 672.6000366210938,
+      "focus": "详情未取得",
+      "height": 844,
+      "sectionTop": 565.7999877929688
+    },
+    {
+      "check": "detail-failure-return",
+      "focus": "DEMO-20260915-0001",
+      "top": 337
+    },
+    {
+      "check": "initial-failure-paging",
+      "nextEnabled": false,
+      "previousEnabled": false,
+      "rows": 0
+    },
+    {
+      "check": "initial-retry-then-next",
+      "obsoleteError": false,
+      "pagination": "上一页第 2 页 · 共 6 组下一页",
+      "rows": ["DEMO-20260915-0004", "DEMO-20260915-0005", "DEMO-20260915-0006"]
+    },
+    {
+      "bottom": 249.20000457763672,
+      "check": "leave-failure-desktop",
+      "focus": "保存处理结果",
+      "height": 720,
+      "top": 166.8000030517578,
+      "width": 1280
+    }
+  ],
+  "zoom200": {
+    "verified": false,
+    "reason": "Prior attempts did not change real browser zoom; no substituted viewport claim in this pass"
+  }
+}

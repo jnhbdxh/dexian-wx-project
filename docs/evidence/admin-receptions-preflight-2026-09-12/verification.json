@@ -1,0 +1,10 @@
+{
+  "checkedAt": "2026-09-12T14:22:11.8684634+08:00",
+  "head": "82c83457960fc47846b218c5bef5d0ae951d4c19",
+  "changedDuringChecks": [],
+  "adminTests": 108,
+  "adminTestFiles": 17,
+  "typecheck": "passed",
+  "commonBaselineConfirmed": false,
+  "databaseMigrationApplied": "not checked; no migration executed"
+}

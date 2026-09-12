@@ -1,0 +1,340 @@
+{
+  "date": "2026-09-12",
+  "finalWidths": [
+    {
+      "screen": "leave",
+      "requested": {
+        "width": 1440,
+        "height": 900
+      },
+      "client": 1425,
+      "columns": "633.6px 518.4px",
+      "content": 1425,
+      "height": 900,
+      "width": 1440
+    },
+    {
+      "screen": "leave",
+      "requested": {
+        "width": 1280,
+        "height": 720
+      },
+      "client": 1265,
+      "columns": "633.6px 518.4px",
+      "content": 1265,
+      "height": 720,
+      "width": 1280
+    },
+    {
+      "screen": "leave",
+      "requested": {
+        "width": 820,
+        "height": 1180
+      },
+      "client": 805,
+      "columns": "740.8px",
+      "content": 805,
+      "height": 1180,
+      "width": 820
+    },
+    {
+      "screen": "leave",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "client": 375,
+      "columns": "343.2px",
+      "content": 375,
+      "height": 844,
+      "width": 390
+    },
+    {
+      "screen": "leave",
+      "requested": {
+        "width": 320,
+        "height": 640
+      },
+      "client": 305,
+      "columns": "272.8px",
+      "content": 305,
+      "height": 640,
+      "width": 320
+    },
+    {
+      "screen": "leave",
+      "requested": {
+        "width": 899,
+        "height": 900
+      },
+      "client": 884,
+      "columns": "820px",
+      "content": 884,
+      "height": 900,
+      "width": 899
+    },
+    {
+      "screen": "leave",
+      "requested": {
+        "width": 901,
+        "height": 900
+      },
+      "client": 886,
+      "columns": "439.112px 359.288px",
+      "content": 886,
+      "height": 900,
+      "width": 902
+    },
+    {
+      "screen": "reception",
+      "requested": {
+        "width": 1440,
+        "height": 900
+      },
+      "client": 1425,
+      "columns": "506.875px 645.125px",
+      "content": 1425,
+      "height": 900,
+      "width": 1440
+    },
+    {
+      "screen": "reception",
+      "requested": {
+        "width": 1280,
+        "height": 720
+      },
+      "client": 1265,
+      "columns": "506.875px 645.125px",
+      "content": 1265,
+      "height": 720,
+      "width": 1280
+    },
+    {
+      "screen": "reception",
+      "requested": {
+        "width": 820,
+        "height": 1180
+      },
+      "client": 805,
+      "columns": "740.8px",
+      "content": 805,
+      "height": 1180,
+      "width": 820
+    },
+    {
+      "screen": "reception",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "client": 375,
+      "columns": "343.2px",
+      "content": 375,
+      "height": 844,
+      "width": 390
+    },
+    {
+      "screen": "reception",
+      "requested": {
+        "width": 320,
+        "height": 640
+      },
+      "client": 305,
+      "columns": "272.8px",
+      "content": 305,
+      "height": 640,
+      "width": 320
+    },
+    {
+      "screen": "reception",
+      "requested": {
+        "width": 819,
+        "height": 900
+      },
+      "client": 804,
+      "columns": "740px",
+      "content": 804,
+      "height": 900,
+      "width": 819
+    },
+    {
+      "screen": "reception",
+      "requested": {
+        "width": 821,
+        "height": 900
+      },
+      "client": 806,
+      "columns": "316.087px 402.312px",
+      "content": 806,
+      "height": 900,
+      "width": 822
+    }
+  ],
+  "interactions": [
+    {
+      "screen": "reception",
+      "headings": 1,
+      "height": 900,
+      "layout": "506.875px 645.125px",
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "screen": "reception",
+      "headings": 1,
+      "height": 720,
+      "layout": "506.875px 645.125px",
+      "scrollWidth": 1265,
+      "width": 1280
+    },
+    {
+      "screen": "reception",
+      "headings": 1,
+      "height": 1180,
+      "layout": "740.8px",
+      "scrollWidth": 805,
+      "width": 820
+    },
+    {
+      "screen": "reception",
+      "headings": 1,
+      "height": 844,
+      "layout": "343.2px",
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "screen": "reception",
+      "headings": 1,
+      "height": 640,
+      "layout": "288px",
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "reception",
+      "headings": 1,
+      "height": 900,
+      "layout": "740px",
+      "scrollWidth": 804,
+      "width": 819
+    },
+    {
+      "screen": "reception",
+      "headings": 1,
+      "height": 900,
+      "layout": "316.087px 402.312px",
+      "scrollWidth": 806,
+      "width": 822
+    },
+    {
+      "check": "mobile-return",
+      "focus": "DEMO-20260915-0002",
+      "query": "",
+      "scrollY": 791.2000122070312
+    },
+    {
+      "screen": "leave",
+      "requestedWidth": 1440,
+      "height": 900,
+      "layout": "633.6px 518.4px",
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "screen": "leave",
+      "requestedWidth": 1280,
+      "height": 720,
+      "layout": "633.6px 518.4px",
+      "scrollWidth": 1265,
+      "width": 1280
+    },
+    {
+      "screen": "leave",
+      "requestedWidth": 820,
+      "height": 1180,
+      "layout": "740.8px",
+      "scrollWidth": 805,
+      "width": 820
+    },
+    {
+      "screen": "leave",
+      "requestedWidth": 390,
+      "height": 844,
+      "layout": "343.2px",
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "screen": "leave",
+      "requestedWidth": 320,
+      "height": 640,
+      "layout": "288px",
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "leave",
+      "requestedWidth": 899,
+      "height": 900,
+      "layout": "820px",
+      "scrollWidth": 884,
+      "width": 899
+    },
+    {
+      "screen": "leave",
+      "requestedWidth": 901,
+      "height": 900,
+      "layout": "439.112px 359.288px",
+      "scrollWidth": 886,
+      "width": 902
+    },
+    {
+      "check": "unknown-lock",
+      "leaveDisabled": true,
+      "original": "保存结果尚未确定，请核实原操作小满 · 2026-09-15 14:00—18:00。暂时不能重新提交、重置或离开工作区。核实原保存结果",
+      "resetDisabled": true
+    },
+    {
+      "check": "date-popover-320-fixed",
+      "popovers": [
+        {
+          "scrollWidth": 302,
+          "width": 303.6000061035156,
+          "x": 0.987500011920929
+        }
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "check": "leave-impact-fixed",
+      "clientWidth": 375,
+      "confirmInImpact": true,
+      "focus": "本次影响与下一步",
+      "scrollWidth": 375
+    },
+    {
+      "check": "final-date",
+      "clientWidth": 305,
+      "popovers": [
+        {
+          "scrollWidth": 302,
+          "width": 303.6000061035156,
+          "x": 0.987500011920929
+        }
+      ],
+      "scrollWidth": 305,
+      "viewport": 320
+    }
+  ],
+  "network": {
+    "requests": 23,
+    "businessRequests": [],
+    "source": "CDP reload trace"
+  },
+  "zoom200": {
+    "passed": false,
+    "reason": "IAB shortcut did not change zoom; Edge disconnected"
+  }
+}

@@ -5,6 +5,7 @@ coverage/
 .env.*
 !.env.example
 .codex_tmp/
+.impeccable/
 *.log
 *.tsbuildinfo
 .DS_Store

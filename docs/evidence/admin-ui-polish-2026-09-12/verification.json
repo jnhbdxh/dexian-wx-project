@@ -1,0 +1,239 @@
+{
+  "date": "2026-09-12",
+  "browser": "Codex In-app Browser",
+  "measurements": [
+    {
+      "check": "reception-layout",
+      "client": 1425,
+      "content": 1425,
+      "grid": "506.875px 645.125px",
+      "h1": "30px",
+      "height": 900,
+      "width": 1440
+    },
+    {
+      "check": "reception-layout",
+      "client": 1265,
+      "content": 1265,
+      "grid": "506.875px 645.125px",
+      "h1": "30px",
+      "height": 720,
+      "width": 1280
+    },
+    {
+      "check": "reception-layout",
+      "client": 805,
+      "content": 805,
+      "grid": "740.8px",
+      "h1": "30px",
+      "height": 1180,
+      "width": 820
+    },
+    {
+      "check": "reception-layout",
+      "client": 375,
+      "content": 375,
+      "grid": "343.2px",
+      "h1": "28px",
+      "height": 844,
+      "width": 390
+    },
+    {
+      "check": "reception-layout",
+      "client": 305,
+      "content": 305,
+      "grid": "272.8px",
+      "h1": "28px",
+      "height": 640,
+      "width": 320
+    },
+    {
+      "check": "unified-fields",
+      "fields": [
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 44,
+          "radius": "9px"
+        },
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 44,
+          "radius": "9px"
+        },
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 46,
+          "radius": "9px"
+        },
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 46,
+          "radius": "9px"
+        },
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 87.20000457763672,
+          "radius": "9px"
+        }
+      ]
+    },
+    {
+      "check": "leave-layout",
+      "client": 1425,
+      "content": 1425,
+      "grid": "633.6px 518.4px",
+      "height": 900,
+      "width": 1440
+    },
+    {
+      "check": "leave-layout",
+      "client": 1265,
+      "content": 1265,
+      "grid": "633.6px 518.4px",
+      "height": 720,
+      "width": 1280
+    },
+    {
+      "check": "leave-layout",
+      "client": 805,
+      "content": 805,
+      "grid": "740.8px",
+      "height": 1180,
+      "width": 820
+    },
+    {
+      "check": "leave-layout",
+      "client": 375,
+      "content": 375,
+      "grid": "343.2px",
+      "height": 844,
+      "width": 390
+    },
+    {
+      "check": "leave-layout",
+      "client": 305,
+      "content": 305,
+      "grid": "272.8px",
+      "height": 640,
+      "width": 320
+    },
+    {
+      "bottom": 722.8000183105469,
+      "check": "followup-result",
+      "focus": "保存处理结果",
+      "preSaveImpactVisible": false,
+      "top": 474.8000183105469
+    },
+    {
+      "check": "unknown-result",
+      "focus": "保存处理结果",
+      "resetDisabled": true,
+      "verifyButton": [
+        {
+          "bottom": 649.2000122070312,
+          "top": 605.2000122070312
+        }
+      ]
+    },
+    {
+      "check": "field-errors",
+      "errors": [
+        "结束时间必须晚于开始时间；本示例仅登记同一天内的请假。",
+        "请填写内部请假原因。"
+      ],
+      "focus": "v-13-end",
+      "overflow": false
+    },
+    {
+      "check": "long-content-320",
+      "client": 305,
+      "content": 305,
+      "selected": "林女士与同行顾客（长名称展示示例，请核对两位顾客的独立安排）待确认09/14 23:30 — 09/15 00:302 位 · 舒缓护理与肩颈放松组合项目（长项目名称展示示例）、肩颈护理DEMO-20260915-0001-LONG-REFERENCE-ONLY-FOR-LAYOUT-REVIEW查看安排",
+      "title": "林女士与同行顾客（长名称展示示例，请核对两位顾客的独立安排）的接待",
+      "width": 320
+    },
+    {
+      "check": "long-return",
+      "focus": "DEMO-20260915-0001-LONG-REFERENCE-ONLY-FOR-LAYOUT-REVIEW"
+    },
+    {
+      "check": "date-popper-320",
+      "client": 305,
+      "content": 305,
+      "popper": [
+        {
+          "left": 0.987500011920929,
+          "right": 304.58750611543655,
+          "width": 303.6000061035156
+        }
+      ]
+    },
+    {
+      "check": "detail-failure",
+      "feedbackBottom": 777.4000396728516,
+      "focus": "详情未取得",
+      "height": 844
+    },
+    {
+      "check": "error-return",
+      "focus": "DEMO-20260915-0001"
+    },
+    {
+      "check": "unified-fields-final",
+      "fields": [
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 44,
+          "radius": "9px"
+        },
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 44,
+          "radius": "9px"
+        },
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 44,
+          "radius": "9px"
+        },
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 44,
+          "radius": "9px"
+        },
+        {
+          "color": "rgb(32, 49, 40)",
+          "height": 87.20000457763672,
+          "radius": "9px"
+        }
+      ]
+    }
+  ],
+  "zoom200": {
+    "verified": false,
+    "browserVersion": "Unavailable through connected tools",
+    "edge": "Connection failed",
+    "before": {
+      "dpr": 1.0000000149011612,
+      "height": 720,
+      "scale": 1,
+      "width": 1280
+    },
+    "after": {
+      "dpr": 1.0000000149011612,
+      "height": 720,
+      "scale": 1,
+      "width": 1280
+    },
+    "method": "Ctrl+0 then five Ctrl+=, reset with Ctrl+0; no actual zoom change"
+  },
+  "validation": {
+    "adminTests": 108,
+    "exampleTests": 26,
+    "componentTests": 5,
+    "typecheck": "passed",
+    "build": "passed",
+    "productionPreview": false,
+    "productionDemoMatches": 0
+  }
+}

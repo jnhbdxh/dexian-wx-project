@@ -1,0 +1,359 @@
+{
+  "capturedAt": "2026-09-12T14:21:30.5150082+08:00",
+  "head": "82c83457960fc47846b218c5bef5d0ae951d4c19",
+  "purpose": "Read-only preflight inventory, not an approved common baseline or implementation snapshot",
+  "files": [
+    {
+      "path": "apps/admin/src/components/admin-ui/AdminCopy.vue",
+      "sha256": "4DD00D87CA69B79AF1AE5AF0A61F92116098D910404A034E5CAD8C4105BD1229"
+    },
+    {
+      "path": "apps/admin/src/components/admin-ui/AdminFeedback.vue",
+      "sha256": "6F27434B3BB00E2BAB74D5EE8B976C4B3757817B2F0B02D4FF284A8AB50C3329"
+    },
+    {
+      "path": "apps/admin/src/components/admin-ui/AdminFilters.vue",
+      "sha256": "B8A8240970876C83CD54D40380D9093F77DDFD2924AF7AAEF95B9A56867F1EC0"
+    },
+    {
+      "path": "apps/admin/src/components/admin-ui/AdminPage.vue",
+      "sha256": "906865001ED44D4C47E4691A91B232433963C5E80D7B9B038CC16AACB62F7D8D"
+    },
+    {
+      "path": "apps/admin/src/components/admin-ui/AdminPagination.vue",
+      "sha256": "5F801AAB0FB7D33544EB01434B81FE53E0FE68FA091D27FD24CDD09ED8A41C61"
+    },
+    {
+      "path": "apps/admin/src/components/admin-ui/README.md",
+      "sha256": "685C155FC28B8CB2083EE73C5C84D9D45B0DED8B862A9F814FC16A9512B02857"
+    },
+    {
+      "path": "apps/admin/src/components/admin-ui/admin-ui.css",
+      "sha256": "C9D6FC5C8876B8711020C189F77593EF39F69BB89DF9F0A51110DFE620B1D3AA"
+    },
+    {
+      "path": "apps/admin/src/components/admin-ui/admin-ui.test.ts",
+      "sha256": "25023C0427FECD4E1F7C8895C8F31C6244555EA57DC3937E623FEE70857626C1"
+    },
+    {
+      "path": "apps/admin/src/dev/admin-ui/LeaveExample.vue",
+      "sha256": "5441C403E17B7E60877E46B3D569786FF30EF756CB3BC481981FF743F3B34131"
+    },
+    {
+      "path": "apps/admin/src/dev/admin-ui/PreviewApp.vue",
+      "sha256": "72B9F3627B1765398C3E67EE455014B4BED2E0D6C497B048F38996E3FB96EE72"
+    },
+    {
+      "path": "apps/admin/src/dev/admin-ui/ReceptionExample.vue",
+      "sha256": "AF8C5316903F1BB6B80A2D3CE2380AB8DC79CEABF911ADA9D2AF0318B3EE8EA3"
+    },
+    {
+      "path": "apps/admin/src/dev/admin-ui/examples.test.ts",
+      "sha256": "A5D556F1408ED3C44C3F172713C907DE324881E2B4FE25F212DD1E5B5EDD14AA"
+    },
+    {
+      "path": "apps/admin/src/dev/admin-ui/main.ts",
+      "sha256": "8341151EF66E90D2D2F3EC4DFDF3BE4D02927AF0451BE08070D11BF2B41AAD7D"
+    },
+    {
+      "path": "apps/admin/src/dev/admin-ui/preview.css",
+      "sha256": "C339590BBF7D88964EF8548F9EE8D948A8E75EE001ED7BFC95AB23F5B7C73ACC"
+    },
+    {
+      "path": "apps/admin/src/dev/admin-ui/scenarios.ts",
+      "sha256": "E2F255B6A35F1F3D5A4FF74485E78085CFEC273AED2693795B8EF15E1C3605B7"
+    },
+    {
+      "path": "apps/admin/src/dev/admin-ui/use-reception-example.ts",
+      "sha256": "1AEA706EC5FAED1A7EF6DAD54BA40B318A8378E3539B06DB70F04AC39FC743A5"
+    },
+    {
+      "path": "apps/admin/src/lib/booking-policy-api.ts",
+      "sha256": "7BE0C00F69166D5155A5FF2A1CFC158245DA761898D49682162FCEC40CEE7CAB"
+    },
+    {
+      "path": "apps/admin/src/lib/booking-policy-recovery.test.ts",
+      "sha256": "FD89F32EA864F008D505FEDE926AB57D5937F1773421BF4B6EF8466C7B618429"
+    },
+    {
+      "path": "apps/admin/src/lib/booking-policy-recovery.ts",
+      "sha256": "D38D25A77B8A21822BB955F1127877A3465FC247BF2069907F8AFA1D335A945B"
+    },
+    {
+      "path": "apps/admin/src/lib/reception-confirmation-recovery.ts",
+      "sha256": "B4D63EAA81193BE03D8EFEE0EB4EFB57E6C0CE663903D562414BD3B6A37D9A02"
+    },
+    {
+      "path": "apps/admin/src/lib/receptions-api.test.ts",
+      "sha256": "DB4ABC2FA0ED2964EBFBAF153B147902ED00D03852B2EC453497BB0618F02D7F"
+    },
+    {
+      "path": "apps/admin/src/lib/receptions-api.ts",
+      "sha256": "EF4F0ACF8C75F54B2118201BFB6530CAF720D13BCDAA9422969FBA0EAF3A4985"
+    },
+    {
+      "path": "apps/admin/src/lib/resource-calendar-api.test.ts",
+      "sha256": "2CB098E53D42F2643B3349156F8265BB9C5C49FEC37CA9DD8F6C34433DAA05A9"
+    },
+    {
+      "path": "apps/admin/src/lib/resource-calendar-api.ts",
+      "sha256": "BF8523FD28CBBE53630A57C03043E1DD8EE7A3F13DE66A8DFAAD77E969694A6A"
+    },
+    {
+      "path": "apps/admin/src/lib/resource-calendar-ui.test.ts",
+      "sha256": "553C21A801C07D9A5963E75292242210DEF8C6426596B68B74DF35399C1792FE"
+    },
+    {
+      "path": "apps/admin/src/lib/resource-calendar-ui.ts",
+      "sha256": "71680D71C901BC24D615098C41634547169C2918DF2B9057B6884A21D30323D0"
+    },
+    {
+      "path": "apps/admin/src/lib/use-receptions.ts",
+      "sha256": "80B55C4AE9AB7F74C12DF5B6692F44C3F3D86151E65F4B65748BAE184E975607"
+    },
+    {
+      "path": "apps/admin/src/views/BookingPolicyPage.test.ts",
+      "sha256": "9FCC22A9C24B9947B79018415643F8D3DEBB10207A8D7D2ADD0CFB718F4FA87E"
+    },
+    {
+      "path": "apps/admin/src/views/BookingPolicyPage.vue",
+      "sha256": "15808F7427999B87C9A8DDF7886A5A81DA9FAB0FCDE0E8CF17BE9346D57AC569"
+    },
+    {
+      "path": "apps/admin/src/views/PaymentReviewPage.test.ts",
+      "sha256": "5DFBA993B5EF16734EF4F10A46BB36022CD0672EAD9B4227705537DF3D3E4775"
+    },
+    {
+      "path": "apps/admin/src/views/PaymentReviewPage.vue",
+      "sha256": "CC0D401E15FEE885B07AF81817AC6AEF3034432E5CF27414CEAF44968D47E9E7"
+    },
+    {
+      "path": "apps/admin/src/views/ReceptionDetails.vue",
+      "sha256": "BC046F25049F39F1DC2ACDE68CD7EA2824B705B2D981692E778DBBB6A0E11DD3"
+    },
+    {
+      "path": "apps/admin/src/views/ReceptionsPage.test.ts",
+      "sha256": "A8824DDA82C6A29F065A05531B242009706D50B2732F4EC05B433DFEDC26A3F3"
+    },
+    {
+      "path": "apps/admin/src/views/ReceptionsPage.vue",
+      "sha256": "FAAD11ACCF29C33273BB641160DFC2E989988084812310980E78F62C576CCE91"
+    },
+    {
+      "path": "apps/admin/src/views/ResourceCalendarPage.test.ts",
+      "sha256": "17A7C3C5AFDED633F4F78F69DAE0D13867777315230F31E895CFE01773CA59B0"
+    },
+    {
+      "path": "apps/admin/src/views/ResourceCalendarPage.vue",
+      "sha256": "5950FA2B5C57D4B33F0916FA3A0FB8EDE7A3564CE60604DC6856E41F16166C93"
+    },
+    {
+      "path": "apps/admin/src/views/booking-policy.css",
+      "sha256": "BC72668E913E47A165C6007ACEA957260351D767EB0BFDC22EBCAA6C80B58B80"
+    },
+    {
+      "path": "apps/admin/src/views/receptions.css",
+      "sha256": "B8A05270DE4621890D6E7139FA5DFCACEC6422F5F4A3BFE7DBD92E36FA5B91E2"
+    },
+    {
+      "path": "apps/admin/src/views/resource-calendar.css",
+      "sha256": "4B0E59777231A9EC7ECBEC3A2E14BC7F65341AB1B3B039F3C25BD683E624F241"
+    },
+    {
+      "path": "apps/admin/ui-preview.html",
+      "sha256": "15EDACC25C1B3A93631302BA8EB7B1A7405F531D597508BBB394D71162B15FE8"
+    },
+    {
+      "path": "apps/api/drizzle/0005_illegal_gwen_stacy.sql",
+      "sha256": "E8D91475634022EEF4945CFAE1A45F7EEB0E5CD0A91FAD83BD0BF3EB85453FC8"
+    },
+    {
+      "path": "apps/api/drizzle/0006_classy_cloak.sql",
+      "sha256": "2E8EFD8E2D4B5ECB932FAC2BF691C249676753DFCD9EC6826A78793D37B848FC"
+    },
+    {
+      "path": "apps/api/drizzle/0007_payment_upgrade_backfill.sql",
+      "sha256": "A0FB379ED55162FF5BAF3029AA4DEDEB8668C9EAEC4E01608225B13423B1E06A"
+    },
+    {
+      "path": "apps/api/drizzle/0008_customer_reception_history.sql",
+      "sha256": "A20A38C17C9EFE8A893BF7D38C7D3E2699E6681D652D2C4F92BFCA1F1B8891C0"
+    },
+    {
+      "path": "apps/api/drizzle/0009_next_colonel_america.sql",
+      "sha256": "FA151C7DC8DADDFF10E2B855CFD79D9E0BCC94899991E996D27C7AB25E2EC209"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0005_snapshot.json",
+      "sha256": "2739DD9A9C73E2F20BE43DE245FE02175E04FD821DFBC077F903E8B324A6D266"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0006_snapshot.json",
+      "sha256": "A03E5BC5863FBACCB91FED86B1B31ADE33B9218A7332A1411EDB5CEC204CF258"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0007_snapshot.json",
+      "sha256": "A07F455ECC051C8F1C423B6AE5C1A976A9E93F452C71D3D45BDD54A76988EFB3"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0008_snapshot.json",
+      "sha256": "0B90356661745A6A30EF6D12E09CFCF6928484B4DB2FAFB920ADD128D9D54796"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0009_snapshot.json",
+      "sha256": "C7C41F2E3C93C28884B708E8E10140752FECD4FE298F20DA84D534EA899FBE84"
+    },
+    {
+      "path": "apps/admin/index.html",
+      "sha256": "924EB678F23AE7C7489EEB03FB715FD67DC12C34FADEE006C3976B91EECB7881"
+    },
+    {
+      "path": "apps/admin/package.json",
+      "sha256": "7B61ABFD53311CCAAAED4F386FB177510D14B5B359868C68802AE07E4BFD6894"
+    },
+    {
+      "path": "apps/admin/src/App.vue",
+      "sha256": "3BEA34FA5DC75A9C85DB5D46D83CE6AF5694FF30AA8878084F5A830CAA5E0952"
+    },
+    {
+      "path": "apps/admin/src/env.d.ts",
+      "sha256": "8FF9D2C5CFC92F88258917D7679FDDA5944BC2B529EC700E87ACBF13C59D7F11"
+    },
+    {
+      "path": "apps/admin/src/lib/api.test.ts",
+      "sha256": "B06EFA9933E9F3BCF2A848B76ECD73DA72A34CE0E11A9FA94411B670E3E39899"
+    },
+    {
+      "path": "apps/admin/src/lib/api.ts",
+      "sha256": "F430B8480B91ADB50593882B41A01DCA3DBE1DF0015E18729785DFC014426648"
+    },
+    {
+      "path": "apps/admin/src/lib/confirmation.test.ts",
+      "sha256": "A15057DE37C2451F43E4C84B19AFA9D0803521CD5E58AC86E75101EB0A8736FC"
+    },
+    {
+      "path": "apps/admin/src/lib/confirmation.ts",
+      "sha256": "F8828B3AE0488D2F2C154DDFA36BA7E099A2CC3119E0A05C6BCB3D834EE3F31C"
+    },
+    {
+      "path": "apps/admin/src/lib/leave-error.ts",
+      "sha256": "5526E4F28F9ECB1388B2E336EBE650FB5DF00547F1F23E67773BC48A858554C3"
+    },
+    {
+      "path": "apps/admin/src/lib/leave-recovery.test.ts",
+      "sha256": "B23E5463A0530192D4E63188C4204DF7A83987D2120159BB0484E9488A6AB7F3"
+    },
+    {
+      "path": "apps/admin/src/lib/leave-recovery.ts",
+      "sha256": "B33CA4EFEA0985DBB92BB1659D2EFC138BB6B3BDB73AB2742D68C4217D162363"
+    },
+    {
+      "path": "apps/admin/src/lib/overview-error.test.ts",
+      "sha256": "F292B4FBDBE74C4857295DFBB3F2D3EEC7317CFCA152ED3905C530F30B05C4C3"
+    },
+    {
+      "path": "apps/admin/src/lib/overview-error.ts",
+      "sha256": "9FC0683280C8C468D9DF394DF3DE347004324CAB2E454A5041458758DC3DFF40"
+    },
+    {
+      "path": "apps/admin/src/main.ts",
+      "sha256": "D9D35DA6CEC24F9FFC0F3EE0C206C1EE2275F06178194058DE0B89B74FC47DB9"
+    },
+    {
+      "path": "apps/admin/src/router.ts",
+      "sha256": "DB1105D167D78438F4E469539E6094A540C347641FA276A170C9D97A040A4DDC"
+    },
+    {
+      "path": "apps/admin/src/styles.css",
+      "sha256": "9D6094617C74C7BBABCAAE9C1180F7112E4F9FF233B467925BF329285F6635EF"
+    },
+    {
+      "path": "apps/admin/src/views/DashboardPage.test.ts",
+      "sha256": "3B5188C063FE3AEE13C888D4D7F125F1EBC38E165F99C680ADEBE7AB0772DD77"
+    },
+    {
+      "path": "apps/admin/src/views/DashboardPage.vue",
+      "sha256": "7EF4CFD5F7B562C66D842C55FC3544CFD63823410EF21D39CA14488D8FFA2CEB"
+    },
+    {
+      "path": "apps/admin/src/views/LoginPage.vue",
+      "sha256": "87E2DEACABB76ACEC8E9C547DB877D1301CFD7122F0D3FBDB2F93BE431FD8D01"
+    },
+    {
+      "path": "apps/admin/src/views/SchedulingPage.router.test.ts",
+      "sha256": "B5EAD2AEA9BF6EF7ECB44EC75A2D5DAA031B6375B9B94EA52C4BA2EED89ED0E0"
+    },
+    {
+      "path": "apps/admin/src/views/SchedulingPage.test.ts",
+      "sha256": "786D48B4CFFE6B05C47046C4B1808BECC6CE4164008E94D603DE4600AF7927E4"
+    },
+    {
+      "path": "apps/admin/src/views/SchedulingPage.vue",
+      "sha256": "C27EE0A2AD45B66B937DE36E9AC12F8DAFA65948E3095ACFA06F6D6CAAF75FB4"
+    },
+    {
+      "path": "apps/admin/tsconfig.json",
+      "sha256": "B2AC0681CE372907E21160DDB6A5F402DE151B68DD918024865CF6C76302EFA1"
+    },
+    {
+      "path": "apps/admin/vite.config.ts",
+      "sha256": "2F8FA82B6429C2C0894403C094272BE16F3AD3A6700F8C5E6E20BA3C54B648A4"
+    },
+    {
+      "path": "apps/api/drizzle/0000_cooing_black_tom.sql",
+      "sha256": "2830F6366A343769E91B8F5F8CCB6087D8C79C0FC6D130CF6083E9CBCE505B17"
+    },
+    {
+      "path": "apps/api/drizzle/0001_broad_serpent_society.sql",
+      "sha256": "79C8F628E96594B6CDAB120C3D327D00ED3873C6EBC7D62495566F6A8329DE92"
+    },
+    {
+      "path": "apps/api/drizzle/0002_loving_cannonball.sql",
+      "sha256": "52A22C2BF8CBE958B1DC7AF31C303C2B89597042B9A7F300A7F35855DCC622E5"
+    },
+    {
+      "path": "apps/api/drizzle/0003_add-reception-confirm-permission.sql",
+      "sha256": "8BDE25570E32380480274D7B115C426A6D9EE57DF84689FDBA07791ADA9BFE8C"
+    },
+    {
+      "path": "apps/api/drizzle/0004_kind_captain_cross.sql",
+      "sha256": "119D1974F89EB39C18BAC80710815A3AE0F0F7218114579C3104D4F4C42F959E"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0000_snapshot.json",
+      "sha256": "AFF1D536197607EB04F5F74028AA1CF441C0BB79E563F41062F8A629EFE2FA51"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0001_snapshot.json",
+      "sha256": "7A0EDC1CD01D642505C0F73322D95E81E5F7DF0C8D2B9F3F51127142E9ADB9A3"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0002_snapshot.json",
+      "sha256": "98ED1F42A2CA50BF7C31A1D6FA7CB3D410F958AD175985699B95DB3C2419FBC0"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0003_snapshot.json",
+      "sha256": "CFEE57BA46E981767D669549B56A05E7D97B0E7E20ED97D3A2E0B47B68491ED1"
+    },
+    {
+      "path": "apps/api/drizzle/meta/0004_snapshot.json",
+      "sha256": "ADC90C7A3A0EB51A8BEB7856685D57A87CE672F86D44D1E0436499DB8F80EE51"
+    },
+    {
+      "path": "apps/api/drizzle/meta/_journal.json",
+      "sha256": "9F7FC734287B038197D684F5CAF9D73EEACCA798068FB9D54C0F2BE8823DE5B1"
+    },
+    {
+      "path": "package.json",
+      "sha256": "56CEE560B0E7C22096648D82047C7B16A4B2DF36A733EB6835308868DC8DA112"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "72FE89BF747A0E0E8DF66700D99F98138D8507D292A4F2308EF97416C4E8EE01"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "sha256": "61EE428EDBBDF5C29FA276CEF043E73C5EE127D5B23040D2710FDBB41905DD86"
+    }
+  ]
+}
