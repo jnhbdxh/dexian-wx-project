@@ -7,6 +7,7 @@ import {
   signBookingCandidate,
   verifyBookingCandidate,
   type BookingCandidate,
+  type BookingCandidateV2,
 } from "../src/modules/booking/candidate.js";
 
 const secret = "test-only-booking-candidate-secret-32-chars";
@@ -70,18 +71,46 @@ function candidate(): BookingCandidate {
 }
 
 describe("booking candidate token", () => {
-  it("round-trips a signed candidate", () => {
+  it("round-trips an opaque authenticated candidate", () => {
     const expected = candidate();
     const token = signBookingCandidate(expected, secret);
 
+    expect(token).not.toContain(expected.assignments[0]!.roomResourceId);
+    expect(token).not.toContain(expected.assignments[0]!.bedResourceId);
+    for (const part of token.split(".").slice(1)) {
+      expect(Buffer.from(part!, "base64url").toString("utf8")).not.toContain(
+        expected.assignments[0]!.roomResourceId,
+      );
+    }
     expect(verifyBookingCandidate(token, secret)).toEqual(expected);
   });
 
-  it("rejects a modified signature", () => {
+  it("decodes both legacy and policy-aware candidates", () => {
+    const legacy = candidate();
+    const current: BookingCandidateV2 = {
+      ...legacy,
+      version: 2,
+      policySnapshot: {
+        revisionId: randomUUID(),
+        publishedVersion: 3,
+        onlineHoldMinutes: 120,
+      },
+    };
+
+    expect(
+      verifyBookingCandidate(signBookingCandidate(legacy, secret), secret)
+        .version,
+    ).toBe(1);
+    expect(
+      verifyBookingCandidate(signBookingCandidate(current, secret), secret),
+    ).toEqual(current);
+  });
+
+  it("rejects modified ciphertext", () => {
     const token = signBookingCandidate(candidate(), secret);
-    const [payload, encodedSignature] = token.split(".");
-    const replacement = encodedSignature!.startsWith("A") ? "B" : "A";
-    const modified = `${payload}.${replacement}${encodedSignature!.slice(1)}`;
+    const [version, iv, payload, tag] = token.split(".");
+    const replacement = payload!.startsWith("A") ? "B" : "A";
+    const modified = `${version}.${iv}.${replacement}${payload!.slice(1)}.${tag}`;
 
     try {
       verifyBookingCandidate(modified, secret);

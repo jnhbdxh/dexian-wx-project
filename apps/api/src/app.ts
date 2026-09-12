@@ -8,18 +8,37 @@ import Fastify from "fastify";
 
 import type { AppConfig } from "./config/env.js";
 import type { Database } from "./db/client.js";
+import {
+  ConsoleSmsGateway,
+  type SmsGateway,
+} from "./integrations/sms/gateway.js";
+import {
+  WechatMiniProgramHttpGateway,
+  type WechatMiniProgramGateway,
+} from "./integrations/wechat/miniprogram.js";
+import {
+  WechatPayHttpGateway,
+  type WechatPayGateway,
+} from "./integrations/wechat/payment.js";
 import { AppError } from "./lib/app-error.js";
 import { adminAuthRoutes } from "./modules/auth/admin-routes.js";
 import { customerAuthRoutes } from "./modules/auth/customer-routes.js";
 import { bookingRoutes } from "./modules/booking/routes.js";
+import { bookingPolicyRoutes } from "./modules/booking-policy/routes.js";
 import { healthRoutes } from "./modules/health/routes.js";
 import { operationsRoutes } from "./modules/operations/routes.js";
+import { adminReceptionRoutes } from "./modules/operations/reception-routes.js";
+import { paymentRoutes } from "./modules/payment/routes.js";
 import { schedulingRoutes } from "./modules/scheduling/routes.js";
+import { verificationRoutes } from "./modules/verification/routes.js";
 
 export interface AppOptions {
   config: AppConfig;
   database: Database;
   logger?: boolean;
+  smsGateway?: SmsGateway;
+  wechatMiniProgramGateway?: WechatMiniProgramGateway;
+  wechatPayGateway?: WechatPayGateway;
 }
 
 const rootRoutes: FastifyPluginAsyncTypebox = async (app) => {
@@ -82,11 +101,40 @@ export async function buildApp(options: AppOptions) {
 
   await app.register(rootRoutes);
   await app.register(healthRoutes, { database: options.database });
+  const smsGateway =
+    options.smsGateway ??
+    (options.config.nodeEnv === "development"
+      ? new ConsoleSmsGateway()
+      : undefined);
+  const wechatMiniProgramGateway =
+    options.wechatMiniProgramGateway ??
+    (options.config.wechatMiniProgram
+      ? new WechatMiniProgramHttpGateway(options.config.wechatMiniProgram)
+      : undefined);
+  const wechatPayGateway =
+    options.wechatPayGateway ??
+    (options.config.wechatPay
+      ? new WechatPayHttpGateway(options.config.wechatPay)
+      : undefined);
+
   await app.register(adminAuthRoutes, options);
   await app.register(operationsRoutes, { database: options.database });
-  await app.register(customerAuthRoutes, options);
+  await app.register(adminReceptionRoutes, { database: options.database });
+  await app.register(customerAuthRoutes, {
+    ...options,
+    ...(wechatMiniProgramGateway ? { wechatMiniProgramGateway } : {}),
+  });
   await app.register(bookingRoutes, options);
+  await app.register(bookingPolicyRoutes, options);
   await app.register(schedulingRoutes, options);
+  await app.register(verificationRoutes, {
+    ...options,
+    ...(smsGateway ? { smsGateway } : {}),
+  });
+  await app.register(paymentRoutes, {
+    ...options,
+    ...(wechatPayGateway ? { wechatPayGateway } : {}),
+  });
 
   return app;
 }

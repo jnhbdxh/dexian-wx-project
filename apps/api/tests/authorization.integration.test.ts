@@ -150,6 +150,34 @@ describe.runIf(hasDatabase)("operations authorization", () => {
     expect(response.json().code).toBe("AUTH_REQUIRED");
   });
 
+  it("protects reception queries with the same operations permission", async () => {
+    const [anonymous, denied, allowed] = await Promise.all([
+      app.inject({
+        method: "GET",
+        url: "/api/v1/admin/receptions?serviceDate=2026-09-11",
+      }),
+      app.inject({
+        method: "GET",
+        url: "/api/v1/admin/receptions?serviceDate=2026-09-11",
+        headers: { cookie: `dexian_admin_session=${deniedToken}` },
+      }),
+      app.inject({
+        method: "GET",
+        url: "/api/v1/admin/receptions?serviceDate=2026-09-11",
+        headers: { cookie: `dexian_admin_session=${allowedToken}` },
+      }),
+    ]);
+
+    expect(anonymous.statusCode).toBe(401);
+    expect(denied.statusCode).toBe(403);
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.json()).toMatchObject({
+      total: 0,
+      items: [],
+      nextCursor: null,
+    });
+  });
+
   it("rejects an authenticated employee without permission", async () => {
     const response = await app.inject({
       method: "GET",

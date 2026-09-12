@@ -36,6 +36,41 @@
       "when": 1789024364672,
       "tag": "0004_kind_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789091648954,
+      "tag": "0005_illegal_gwen_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789094460740,
+      "tag": "0006_classy_cloak",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789098610502,
+      "tag": "0007_payment_upgrade_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789109782432,
+      "tag": "0008_customer_reception_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789121703808,
+      "tag": "0009_next_colonel_america",
+      "breakpoints": true
     }
   ]
 }

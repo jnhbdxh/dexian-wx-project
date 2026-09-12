@@ -12,8 +12,17 @@ import {
 } from "../db/schema.js";
 import { hashPassword } from "../lib/crypto.js";
 import { OPERATIONS_OVERVIEW_READ } from "../modules/operations/routes.js";
+import {
+  PAYMENTS_REVIEW_READ,
+  PAYMENTS_REVIEW_RECONCILE,
+} from "../modules/payment/routes.js";
 import { SCHEDULING_LEAVE_WRITE } from "../modules/scheduling/routes.js";
 import { RECEPTIONS_CONFIRM } from "../modules/booking/routes.js";
+import {
+  BOOKING_POLICY_PUBLISH,
+  BOOKING_POLICY_READ,
+  BOOKING_POLICY_WRITE,
+} from "../modules/booking-policy/routes.js";
 
 const storeName = process.env.BOOTSTRAP_STORE_NAME?.trim();
 const username = process.env.BOOTSTRAP_ADMIN_USERNAME?.trim();
@@ -66,6 +75,11 @@ try {
       { code: OPERATIONS_OVERVIEW_READ, name: "查看今日工作台" },
       { code: RECEPTIONS_CONFIRM, name: "确认接待" },
       { code: SCHEDULING_LEAVE_WRITE, name: "登记请假" },
+      { code: PAYMENTS_REVIEW_READ, name: "查看异常支付" },
+      { code: PAYMENTS_REVIEW_RECONCILE, name: "重新查询异常支付" },
+      { code: BOOKING_POLICY_READ, name: "查看预约政策" },
+      { code: BOOKING_POLICY_WRITE, name: "编辑预约政策草稿" },
+      { code: BOOKING_POLICY_PUBLISH, name: "发布预约政策" },
       { code: "system.manage", name: "系统管理" },
       { code: "staff.manage", name: "员工管理" },
     ];

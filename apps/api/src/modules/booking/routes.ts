@@ -6,19 +6,19 @@ import type { Database } from "../../db/client.js";
 import { AppError } from "../../lib/app-error.js";
 import { hashToken } from "../../lib/crypto.js";
 import {
-  findCustomerSession,
   findStaffSession,
+  requireCustomerSession,
   staffHasPermission,
   STAFF_CSRF_COOKIE,
   STAFF_SESSION_COOKIE,
 } from "../auth/service.js";
-import {
-  PublicCandidateAssignmentSchema,
-  verifyBookingCandidate,
-} from "./candidate.js";
+import { PublicCandidateAssignmentSchema } from "./candidate.js";
 import {
   confirmReception,
   createHoldReception,
+  getCustomerReception,
+  listBookingCatalog,
+  listCustomerReceptions,
   queryAvailability,
 } from "./service.js";
 
@@ -30,28 +30,48 @@ interface BookingOptions {
 }
 
 const Uuid = Type.String({ format: "uuid" });
-const RequestedAssignment = Type.Object({
-  clientGuestId: Type.String({ minLength: 1, maxLength: 64 }),
-  serviceItemId: Uuid,
-  therapistResourceId: Uuid,
-  roomResourceId: Uuid,
-  bedResourceId: Uuid,
+const CustomerReceptionState = Type.Union([
+  Type.Literal("pending"),
+  Type.Literal("confirmed"),
+  Type.Literal("expired"),
+  Type.Literal("invalidated"),
+]);
+const CustomerReceptionReason = Type.Union([
+  Type.Literal("confirmation_timeout"),
+  Type.Literal("therapist_leave"),
+  Type.Literal("resource_unavailable"),
+  Type.Null(),
+]);
+const CustomerReceptionSummary = Type.Object({
+  receptionId: Uuid,
+  storeId: Uuid,
+  storeName: Type.String(),
+  storeTimezone: Type.String(),
+  state: CustomerReceptionState,
+  statusReason: CustomerReceptionReason,
+  confirmationDeadline: Type.Union([
+    Type.String({ format: "date-time" }),
+    Type.Null(),
+  ]),
+  quoteCents: Type.String({ pattern: "^\\d+$" }),
+  version: Type.Integer({ minimum: 1 }),
+  guestCount: Type.Integer({ minimum: 1 }),
+  serviceItemName: Type.String(),
+  therapistName: Type.String(),
   serviceStartAt: Type.String({ format: "date-time" }),
+  serviceEndAt: Type.String({ format: "date-time" }),
+  createdAt: Type.String({ format: "date-time" }),
+  updatedAt: Type.String({ format: "date-time" }),
 });
-
-async function customerIdentity(
-  database: Database,
-  authorization: string | undefined,
-) {
-  const [scheme, token, extra] = authorization?.split(" ") ?? [];
-  if (scheme !== "Bearer" || !token || extra) {
-    throw new AppError(401, "AUTH_REQUIRED", "请先登录");
-  }
-  const identity = await findCustomerSession(database, token);
-  if (!identity)
-    throw new AppError(401, "AUTH_REQUIRED", "登录已失效，请重新登录");
-  return identity;
-}
+const RequestedAssignment = Type.Object(
+  {
+    clientGuestId: Type.String({ minLength: 1, maxLength: 64 }),
+    serviceItemId: Uuid,
+    therapistResourceId: Uuid,
+    serviceStartAt: Type.String({ format: "date-time" }),
+  },
+  { additionalProperties: false },
+);
 
 function expectedVersion(ifMatch: string | string[] | undefined) {
   const match =
@@ -82,6 +102,37 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<BookingOptions> = async (
   app,
   options,
 ) => {
+  app.get(
+    "/api/v1/booking/catalog",
+    {
+      schema: {
+        response: {
+          200: Type.Object({
+            stores: Type.Array(
+              Type.Object({
+                id: Uuid,
+                name: Type.String(),
+                timezone: Type.String(),
+                services: Type.Array(
+                  Type.Object({
+                    id: Uuid,
+                    name: Type.String(),
+                    durationMinutes: Type.Integer({ minimum: 1 }),
+                    priceCents: Type.String({ pattern: "^\\d+$" }),
+                    therapists: Type.Array(
+                      Type.Object({ id: Uuid, name: Type.String() }),
+                    ),
+                  }),
+                ),
+              }),
+            ),
+          }),
+        },
+      },
+    },
+    async () => listBookingCatalog(options.database),
+  );
+
   app.post(
     "/api/v1/availability/queries",
     {
@@ -97,6 +148,11 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<BookingOptions> = async (
           200: Type.Union([
             Type.Object({
               available: Type.Literal(false),
+              reasonCode: Type.Union([
+                Type.Literal("RESOURCE_UNAVAILABLE"),
+                Type.Literal("CONFIRMATION_TOO_LATE"),
+                Type.Literal("BOOKING_CONFIRMATION_WINDOW_UNAVAILABLE"),
+              ]),
               reason: Type.String(),
             }),
             Type.Object({
@@ -111,7 +167,7 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<BookingOptions> = async (
       },
     },
     async (request) => {
-      const identity = await customerIdentity(
+      const identity = await requireCustomerSession(
         options.database,
         request.headers.authorization,
       );
@@ -121,6 +177,73 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<BookingOptions> = async (
         identity,
         request.body.storeId,
         request.body.assignments,
+      );
+    },
+  );
+
+  app.get(
+    "/api/v1/receptions",
+    {
+      schema: {
+        querystring: Type.Object({ after: Type.Optional(Uuid) }),
+        response: {
+          200: Type.Object({
+            serverNow: Type.String({ format: "date-time" }),
+            items: Type.Array(CustomerReceptionSummary),
+            nextCursor: Type.Union([Uuid, Type.Null()]),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      const identity = await requireCustomerSession(
+        options.database,
+        request.headers.authorization,
+      );
+      return listCustomerReceptions(
+        options.database,
+        identity.customerId,
+        request.query.after,
+      );
+    },
+  );
+
+  app.get(
+    "/api/v1/receptions/:receptionId",
+    {
+      schema: {
+        params: Type.Object({ receptionId: Uuid }),
+        response: {
+          200: Type.Intersect([
+            CustomerReceptionSummary,
+            Type.Object({
+              serverNow: Type.String({ format: "date-time" }),
+              guests: Type.Array(
+                Type.Object({
+                  id: Uuid,
+                  clientGuestId: Type.String(),
+                  serviceItemName: Type.String(),
+                  therapistName: Type.String(),
+                  serviceStartAt: Type.String({ format: "date-time" }),
+                  serviceEndAt: Type.String({ format: "date-time" }),
+                  durationMinutes: Type.Integer({ minimum: 1 }),
+                  quoteCents: Type.String({ pattern: "^\\d+$" }),
+                }),
+              ),
+            }),
+          ]),
+        },
+      },
+    },
+    async (request) => {
+      const identity = await requireCustomerSession(
+        options.database,
+        request.headers.authorization,
+      );
+      return getCustomerReception(
+        options.database,
+        identity.customerId,
+        request.params.receptionId,
       );
     },
   );
@@ -143,23 +266,19 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<BookingOptions> = async (
       },
     },
     async (request, reply) => {
-      const identity = await customerIdentity(
+      const identity = await requireCustomerSession(
         options.database,
         request.headers.authorization,
       );
       const requestIdempotencyKey = idempotencyKey(
         request.headers["idempotency-key"],
       );
-      const candidate = verifyBookingCandidate(
-        request.body.candidateToken,
-        options.config.bookingTokenSecret,
-      );
       const result = await createHoldReception(
         options.database,
         identity,
-        candidate,
         request.body.candidateToken,
         requestIdempotencyKey,
+        options.config.bookingTokenSecret,
       );
       return reply.code(201).send(result);
     },
@@ -195,6 +314,16 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<BookingOptions> = async (
         hashToken(request.headers["x-csrf-token"]) !== session.csrfTokenHash
       ) {
         throw new AppError(403, "CSRF_INVALID", "页面状态已失效，请刷新后重试");
+      }
+      if (
+        request.headers["x-initiating-staff-user-id"] !== session.staffUserId ||
+        request.headers["x-initiating-store-id"] !== session.storeId
+      ) {
+        throw new AppError(
+          409,
+          "RECEPTION_CONFIRM_IDENTITY_CHANGED",
+          "当前登录员工或门店已变化，请切回原账号后继续核实",
+        );
       }
       if (
         !(await staffHasPermission(

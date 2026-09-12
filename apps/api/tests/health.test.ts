@@ -11,6 +11,7 @@ const config: AppConfig = {
   adminWebOrigin: "http://localhost:5173",
   databaseUrl: "postgres://unused",
   bookingTokenSecret: "test-only-booking-token-secret-32-chars",
+  smsCodeSecret: "test-only-sms-code-secret-with-32-chars",
   secureCookies: false,
 };
 

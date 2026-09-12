@@ -25,6 +25,7 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgres://dexian:dexian_ci@127.0.0.1:5432/dexian
       BOOKING_TOKEN_SECRET: ci-only-booking-token-secret-32-chars
+      SMS_CODE_SECRET: ci-only-sms-code-secret-at-least-32-chars
       ADMIN_WEB_ORIGIN: http://localhost:5173
     steps:
       - uses: actions/checkout@v4

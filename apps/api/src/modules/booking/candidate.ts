@@ -1,4 +1,9 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from "node:crypto";
 
 import { Type, type Static } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
@@ -56,12 +61,16 @@ export const CandidateAssignmentSchema = Type.Object({
 });
 
 export const PublicCandidateAssignmentSchema = Type.Object({
-  ...CandidateAssignmentSchema.properties,
+  clientGuestId: Type.String({ minLength: 1, maxLength: 64 }),
+  serviceItemId: Uuid,
+  therapistResourceId: Uuid,
+  serviceStartAt: IsoDateTime,
+  serviceEndAt: IsoDateTime,
+  durationMinutes: Type.Integer({ minimum: 1 }),
   quoteCents: Type.String({ pattern: "^\\d+$" }),
 });
 
-export const BookingCandidateSchema = Type.Object({
-  version: Type.Literal(1),
+const BookingCandidateFields = {
   sessionId: Uuid,
   customerId: Uuid,
   storeId: Uuid,
@@ -71,76 +80,94 @@ export const BookingCandidateSchema = Type.Object({
     maxItems: 8,
   }),
   quoteCents: Type.Integer({ minimum: 0 }),
+};
+
+export const BookingCandidateV1Schema = Type.Object({
+  version: Type.Literal(1),
+  ...BookingCandidateFields,
 });
+
+export const BookingCandidateV2Schema = Type.Object({
+  version: Type.Literal(2),
+  ...BookingCandidateFields,
+  policySnapshot: Type.Object({
+    revisionId: Uuid,
+    publishedVersion: Type.Integer({ minimum: 1 }),
+    onlineHoldMinutes: Type.Integer({ minimum: 1, maximum: 43_200 }),
+  }),
+});
+
+export const BookingCandidateSchema = Type.Union([
+  BookingCandidateV1Schema,
+  BookingCandidateV2Schema,
+]);
 
 export type CandidateAssignment = Static<typeof CandidateAssignmentSchema>;
 export type PublicCandidateAssignment = Static<
   typeof PublicCandidateAssignmentSchema
 >;
-export type BookingCandidate = Static<typeof BookingCandidateSchema>;
+export type BookingCandidateV1 = Static<typeof BookingCandidateV1Schema>;
+export type BookingCandidateV2 = Static<typeof BookingCandidateV2Schema>;
+export type BookingCandidate = BookingCandidateV1 | BookingCandidateV2;
 
-function signature(encodedPayload: string, secret: string) {
-  return createHmac("sha256", secret).update(encodedPayload).digest();
+function invalidCandidate(): never {
+  throw new AppError(400, "CANDIDATE_INVALID", "预约候选凭据无效，请重新查询");
+}
+
+function encryptionKey(secret: string) {
+  return createHash("sha256").update(secret).digest();
 }
 
 export function signBookingCandidate(
   candidate: BookingCandidate,
   secret: string,
 ) {
-  const encodedPayload = Buffer.from(JSON.stringify(candidate)).toString(
-    "base64url",
-  );
-  const encodedSignature = signature(encodedPayload, secret).toString(
-    "base64url",
-  );
-  return `${encodedPayload}.${encodedSignature}`;
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(secret), iv);
+  const encrypted = Buffer.concat([
+    cipher.update(JSON.stringify(candidate), "utf8"),
+    cipher.final(),
+  ]);
+  return [
+    "v1",
+    iv.toString("base64url"),
+    encrypted.toString("base64url"),
+    cipher.getAuthTag().toString("base64url"),
+  ].join(".");
 }
 
 export function verifyBookingCandidate(token: string, secret: string) {
-  const [encodedPayload, encodedSignature, extra] = token.split(".");
-  if (!encodedPayload || !encodedSignature || extra) {
-    throw new AppError(
-      400,
-      "CANDIDATE_INVALID",
-      "预约候选凭据无效，请重新查询",
-    );
-  }
-
-  const expected = signature(encodedPayload, secret);
-  let actual: Buffer;
-  try {
-    actual = Buffer.from(encodedSignature, "base64url");
-  } catch {
-    throw new AppError(
-      400,
-      "CANDIDATE_INVALID",
-      "预约候选凭据无效，请重新查询",
-    );
-  }
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
-    throw new AppError(
-      400,
-      "CANDIDATE_INVALID",
-      "预约候选凭据无效，请重新查询",
-    );
+  const [version, encodedIv, encodedPayload, encodedTag, extra] =
+    token.split(".");
+  if (
+    version !== "v1" ||
+    !encodedIv ||
+    !encodedPayload ||
+    !encodedTag ||
+    extra
+  ) {
+    return invalidCandidate();
   }
 
   let candidate: unknown;
   try {
-    candidate = JSON.parse(Buffer.from(encodedPayload, "base64url").toString());
-  } catch {
-    throw new AppError(
-      400,
-      "CANDIDATE_INVALID",
-      "预约候选凭据无效，请重新查询",
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      encryptionKey(secret),
+      Buffer.from(encodedIv, "base64url"),
     );
+    decipher.setAuthTag(Buffer.from(encodedTag, "base64url"));
+    candidate = JSON.parse(
+      Buffer.concat([
+        decipher.update(Buffer.from(encodedPayload, "base64url")),
+        decipher.final(),
+      ]).toString("utf8"),
+    );
+  } catch {
+    return invalidCandidate();
   }
   if (!Value.Check(BookingCandidateSchema, candidate)) {
-    throw new AppError(
-      400,
-      "CANDIDATE_INVALID",
-      "预约候选凭据无效，请重新查询",
-    );
+    return invalidCandidate();
   }
   return candidate;
 }

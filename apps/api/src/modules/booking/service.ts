@@ -6,7 +6,22 @@ import type { AppConfig } from "../../config/env.js";
 import type { Database } from "../../db/client.js";
 import { AppError } from "../../lib/app-error.js";
 import {
+  addServiceDays,
+  isBookingPolicyV2,
+  minuteInTimeZone,
+  onlineConfirmationDeadline,
+  policyCoversInterval,
+  serviceDateInTimeZone,
+  validateBookingPolicy,
+  type BookingPolicyPayloadV2,
+} from "../booking-policy/domain.js";
+import {
+  loadPublishedPolicy,
+  type BookingCreationMode,
+} from "../booking-policy/service.js";
+import {
   signBookingCandidate,
+  verifyBookingCandidate,
   type BookingCandidate,
   type CandidateAssignment,
   type PublicCandidateAssignment,
@@ -35,6 +50,13 @@ interface RequestedAssignment {
   serviceStartAt: string;
 }
 
+export interface CustomerRequestedAssignment {
+  clientGuestId: string;
+  serviceItemId: string;
+  therapistResourceId: string;
+  serviceStartAt: string;
+}
+
 interface CustomerIdentity {
   sessionId: string;
   customerId: string;
@@ -44,6 +66,7 @@ interface StoreRow {
   lock_key: number;
   timezone: string;
   booking_config_version: number;
+  booking_creation_mode: BookingCreationMode;
   default_prepare_minutes: number | null;
   default_therapist_cleanup_minutes: number | null;
   default_facility_cleanup_minutes: number | null;
@@ -62,14 +85,76 @@ interface AssignmentConfigRow {
   therapist_minimum_rest_minutes: number;
 }
 
+interface FacilityPairRow {
+  room_resource_id: string;
+  bed_resource_id: string;
+}
+
+interface BookingCatalogRow {
+  store_id: string;
+  store_name: string;
+  timezone: string;
+  service_item_id: string;
+  service_name: string;
+  duration_minutes: number;
+  price_cents: number;
+  therapist_resource_id: string;
+  therapist_name: string;
+}
+
+type ReceptionState = "pending" | "confirmed" | "expired" | "invalidated";
+
+interface CustomerReceptionRow {
+  reception_id: string;
+  store_id: string;
+  store_name: string;
+  store_timezone: string;
+  state: ReceptionState;
+  confirmation_deadline: Date | null;
+  quote_cents: number;
+  version: number;
+  created_at: Date;
+  updated_at: Date;
+  guest_count: string;
+  service_item_name: string;
+  therapist_name: string;
+  service_start_at: Date;
+  service_end_at: Date;
+  invalidated_by_leave: boolean;
+}
+
+interface CustomerReceptionGuestRow extends CustomerReceptionRow {
+  guest_id: string;
+  client_guest_id: string;
+  guest_service_item_name: string;
+  guest_therapist_name: string;
+  guest_service_start_at: Date;
+  guest_service_end_at: Date;
+  guest_duration_minutes: number;
+  guest_quote_cents: number;
+}
+
 interface ExistingEventRow<T> {
   request_hash: string;
-  response: T | null;
+  response: T | StoredBookingFailure | null;
+}
+
+interface StoredBookingFailure {
+  bookingFailure: {
+    statusCode: number;
+    code: string;
+    message: string;
+    details: Record<string, unknown>;
+  };
 }
 
 export type AvailabilityResult =
   | {
       available: false;
+      reasonCode:
+        | "RESOURCE_UNAVAILABLE"
+        | "CONFIRMATION_TOO_LATE"
+        | "BOOKING_CONFIRMATION_WINDOW_UNAVAILABLE";
       reason: string;
     }
   | {
@@ -92,6 +177,70 @@ export interface ConfirmReceptionResult {
   state: "confirmed";
   version: number;
   quoteCents: string;
+}
+
+export interface BookingCatalog {
+  stores: Array<{
+    id: string;
+    name: string;
+    timezone: string;
+    services: Array<{
+      id: string;
+      name: string;
+      durationMinutes: number;
+      priceCents: string;
+      therapists: Array<{ id: string; name: string }>;
+    }>;
+  }>;
+}
+
+const CUSTOMER_RECEPTION_PAGE_SIZE = 20;
+
+function customerReceptionState(row: CustomerReceptionRow, serverNow: Date) {
+  return row.state === "pending" &&
+    row.confirmation_deadline &&
+    row.confirmation_deadline <= serverNow
+    ? ("expired" as const)
+    : row.state;
+}
+
+function customerReceptionReason(
+  row: CustomerReceptionRow,
+  state: ReceptionState,
+) {
+  if (state === "expired") return "confirmation_timeout" as const;
+  if (state !== "invalidated") return null;
+  return row.invalidated_by_leave
+    ? ("therapist_leave" as const)
+    : ("resource_unavailable" as const);
+}
+
+function toCustomerReceptionSummary(
+  row: CustomerReceptionRow,
+  serverNow: Date,
+) {
+  const state = customerReceptionState(row, serverNow);
+  return {
+    receptionId: row.reception_id,
+    storeId: row.store_id,
+    storeName: row.store_name,
+    storeTimezone: row.store_timezone,
+    state,
+    statusReason: customerReceptionReason(row, state),
+    confirmationDeadline:
+      state === "pending" && row.confirmation_deadline
+        ? row.confirmation_deadline.toISOString()
+        : null,
+    quoteCents: String(row.quote_cents),
+    version: row.version,
+    guestCount: Number(row.guest_count),
+    serviceItemName: row.service_item_name,
+    therapistName: row.therapist_name,
+    serviceStartAt: row.service_start_at.toISOString(),
+    serviceEndAt: row.service_end_at.toISOString(),
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
+  };
 }
 
 function parseDate(value: string, field: string) {
@@ -141,27 +290,327 @@ function latestOccupationAt(assignments: CandidateAssignment[]) {
 function toPublicAssignment(
   assignment: CandidateAssignment,
 ): PublicCandidateAssignment {
-  return { ...assignment, quoteCents: String(assignment.quoteCents) };
+  return {
+    clientGuestId: assignment.clientGuestId,
+    serviceItemId: assignment.serviceItemId,
+    therapistResourceId: assignment.therapistResourceId,
+    serviceStartAt: assignment.serviceStartAt,
+    serviceEndAt: assignment.serviceEndAt,
+    durationMinutes: assignment.durationMinutes,
+    quoteCents: String(assignment.quoteCents),
+  };
 }
 
 async function loadStore(
   client: PoolClient,
   storeId: string,
+  lockForShare = false,
 ): Promise<StoreRow | undefined> {
   const result = await client.query<StoreRow>(
     `SELECT lock_key,
             timezone,
             booking_config_version,
+            booking_creation_mode,
             default_prepare_minutes,
             default_therapist_cleanup_minutes,
             default_facility_cleanup_minutes,
             default_rest_minutes
        FROM stores
       WHERE id = $1
-        AND active = true`,
+        AND active = true${lockForShare ? " FOR SHARE" : ""}`,
     [storeId],
   );
   return result.rows[0];
+}
+
+async function assertBookingPolicyAllows(
+  client: PoolClient,
+  storeId: string,
+  store: StoreRow,
+  assignments: CandidateAssignment[],
+  decisionNow: Date,
+) {
+  if (store.booking_creation_mode === "legacy") return undefined;
+  if (store.booking_creation_mode === "paused_for_policy_activation") {
+    throw new AppError(
+      503,
+      "BOOKING_CREATION_PAUSED",
+      "门店正在启用新的预约时间，请稍后重试",
+    );
+  }
+  const policy = await loadPublishedPolicy(client, storeId);
+  if (!policy?.published_version) {
+    throw new AppError(
+      409,
+      "BOOKING_POLICY_UNPUBLISHED",
+      "门店暂未开放在线预约",
+    );
+  }
+  validateBookingPolicy(policy.payload);
+  const firstDate = serviceDateInTimeZone(decisionNow, store.timezone);
+  const lastDate = addServiceDays(firstDate, policy.payload.maxAdvanceDays);
+  const minimumStart = new Date(
+    decisionNow.getTime() + policy.payload.minimumLeadMinutes * 60_000,
+  );
+  for (const assignment of assignments) {
+    const startAt = new Date(assignment.serviceStartAt);
+    const endAt = new Date(assignment.serviceEndAt);
+    const serviceDate = serviceDateInTimeZone(startAt, store.timezone);
+    if (serviceDate < firstDate || serviceDate > lastDate) {
+      throw new AppError(
+        409,
+        "BOOKING_POLICY_DATE_OUTSIDE_RANGE",
+        "所选日期不在门店当前开放的预约范围内",
+      );
+    }
+    if (startAt < minimumStart) {
+      throw new AppError(
+        409,
+        "BOOKING_POLICY_LEAD_TIME",
+        "所选时间不满足门店最少提前预约时间",
+      );
+    }
+    if (
+      minuteInTimeZone(startAt, store.timezone) %
+        policy.payload.startGridMinutes !==
+      0
+    ) {
+      throw new AppError(
+        409,
+        "BOOKING_POLICY_START_GRID",
+        "所选时间不在门店开放的开始时刻上",
+      );
+    }
+    if (!policyCoversInterval(policy.payload, store.timezone, startAt, endAt)) {
+      throw new AppError(
+        409,
+        "BOOKING_POLICY_CLOSED",
+        "所选服务时间不在门店营业安排内",
+      );
+    }
+  }
+  return policy;
+}
+
+export async function listBookingCatalog(
+  database: Database,
+): Promise<BookingCatalog> {
+  const result = await database.pool.query<BookingCatalogRow>(
+    `SELECT store.id AS store_id,
+            store.name AS store_name,
+            store.timezone,
+            service.id AS service_item_id,
+            service.name AS service_name,
+            service.duration_minutes,
+            service.price_cents,
+            therapist.id AS therapist_resource_id,
+            therapist.name AS therapist_name
+       FROM stores AS store
+       JOIN service_items AS service
+         ON service.store_id = store.id
+        AND service.active = true
+       JOIN therapist_service_items AS skill
+         ON skill.store_id = store.id
+        AND skill.service_item_id = service.id
+       JOIN resources AS therapist
+         ON therapist.store_id = store.id
+        AND therapist.id = skill.therapist_resource_id
+        AND therapist.resource_type = 'therapist'
+        AND therapist.active = true
+      WHERE store.active = true
+      ORDER BY store.created_at,
+               store.id,
+               service.name,
+               service.id,
+               therapist.name,
+               therapist.id`,
+  );
+  const stores = new Map<string, BookingCatalog["stores"][number]>();
+  const services = new Map<
+    string,
+    BookingCatalog["stores"][number]["services"][number]
+  >();
+  for (const row of result.rows) {
+    let store = stores.get(row.store_id);
+    if (!store) {
+      store = {
+        id: row.store_id,
+        name: row.store_name,
+        timezone: row.timezone,
+        services: [],
+      };
+      stores.set(row.store_id, store);
+    }
+    const serviceKey = `${row.store_id}:${row.service_item_id}`;
+    let service = services.get(serviceKey);
+    if (!service) {
+      service = {
+        id: row.service_item_id,
+        name: row.service_name,
+        durationMinutes: row.duration_minutes,
+        priceCents: String(row.price_cents),
+        therapists: [],
+      };
+      services.set(serviceKey, service);
+      store.services.push(service);
+    }
+    service.therapists.push({
+      id: row.therapist_resource_id,
+      name: row.therapist_name,
+    });
+  }
+  return { stores: [...stores.values()] };
+}
+
+export async function listCustomerReceptions(
+  database: Database,
+  customerId: string,
+  afterReceptionId?: string,
+) {
+  const [clock, result] = await Promise.all([
+    database.pool.query<{ now: Date }>("SELECT clock_timestamp() AS now"),
+    database.pool.query<CustomerReceptionRow>(
+      `WITH cursor_position AS (
+         SELECT created_at, id
+           FROM receptions
+          WHERE id = $2::uuid
+            AND customer_id = $1
+       )
+       SELECT reception.id AS reception_id,
+              store.id AS store_id,
+              store.name AS store_name,
+              store.timezone AS store_timezone,
+              reception.state,
+              reception.confirmation_deadline,
+              reception.quote_cents,
+              reception.version,
+              reception.created_at,
+              reception.updated_at,
+              guest_count.value AS guest_count,
+              primary_guest.service_item_name,
+              primary_guest.therapist_name,
+              primary_guest.service_start_at,
+              primary_guest.service_end_at,
+              EXISTS (
+                SELECT 1
+                  FROM resource_allocations AS allocation
+                 WHERE allocation.reception_id = reception.id
+                   AND allocation.inactive_reason = 'resource_restriction'
+              ) AS invalidated_by_leave
+         FROM receptions AS reception
+         JOIN stores AS store ON store.id = reception.store_id
+         JOIN LATERAL (
+           SELECT count(*)::text AS value
+             FROM reception_guests AS guest
+            WHERE guest.reception_id = reception.id
+         ) AS guest_count ON true
+         JOIN LATERAL (
+           SELECT service.name AS service_item_name,
+                  therapist.name AS therapist_name,
+                  guest.service_start_at,
+                  guest.service_end_at
+             FROM reception_guests AS guest
+             JOIN service_items AS service ON service.id = guest.service_item_id
+             JOIN resources AS therapist
+               ON therapist.id = guest.therapist_resource_id
+            WHERE guest.reception_id = reception.id
+            ORDER BY guest.service_start_at, guest.id
+            LIMIT 1
+         ) AS primary_guest ON true
+        WHERE reception.customer_id = $1
+          AND (
+            $2::uuid IS NULL
+            OR (reception.created_at, reception.id) <
+               (SELECT created_at, id FROM cursor_position)
+          )
+        ORDER BY reception.created_at DESC, reception.id DESC
+        LIMIT $3`,
+      [customerId, afterReceptionId ?? null, CUSTOMER_RECEPTION_PAGE_SIZE + 1],
+    ),
+  ]);
+  const serverNow = clock.rows[0]!.now;
+  const hasMore = result.rows.length > CUSTOMER_RECEPTION_PAGE_SIZE;
+  const visibleRows = result.rows.slice(0, CUSTOMER_RECEPTION_PAGE_SIZE);
+  return {
+    serverNow: serverNow.toISOString(),
+    items: visibleRows.map((row) => toCustomerReceptionSummary(row, serverNow)),
+    nextCursor: hasMore
+      ? visibleRows[visibleRows.length - 1]!.reception_id
+      : null,
+  };
+}
+
+export async function getCustomerReception(
+  database: Database,
+  customerId: string,
+  receptionId: string,
+) {
+  const [clock, result] = await Promise.all([
+    database.pool.query<{ now: Date }>("SELECT clock_timestamp() AS now"),
+    database.pool.query<CustomerReceptionGuestRow>(
+      `SELECT reception.id AS reception_id,
+              store.id AS store_id,
+              store.name AS store_name,
+              store.timezone AS store_timezone,
+              reception.state,
+              reception.confirmation_deadline,
+              reception.quote_cents,
+              reception.version,
+              reception.created_at,
+              reception.updated_at,
+              count(*) OVER ()::text AS guest_count,
+              first_value(service.name) OVER guest_order AS service_item_name,
+              first_value(therapist.name) OVER guest_order AS therapist_name,
+              first_value(guest.service_start_at) OVER guest_order AS service_start_at,
+              first_value(guest.service_end_at) OVER guest_order AS service_end_at,
+              EXISTS (
+                SELECT 1
+                  FROM resource_allocations AS allocation
+                 WHERE allocation.reception_id = reception.id
+                   AND allocation.inactive_reason = 'resource_restriction'
+              ) AS invalidated_by_leave,
+              guest.id AS guest_id,
+              guest.client_guest_id,
+              service.name AS guest_service_item_name,
+              therapist.name AS guest_therapist_name,
+              guest.service_start_at AS guest_service_start_at,
+              guest.service_end_at AS guest_service_end_at,
+              guest.duration_minutes_snapshot AS guest_duration_minutes,
+              guest.quote_cents AS guest_quote_cents
+         FROM receptions AS reception
+         JOIN stores AS store ON store.id = reception.store_id
+         JOIN reception_guests AS guest ON guest.reception_id = reception.id
+         JOIN service_items AS service ON service.id = guest.service_item_id
+         JOIN resources AS therapist ON therapist.id = guest.therapist_resource_id
+        WHERE reception.id = $1
+          AND reception.customer_id = $2
+       WINDOW guest_order AS (
+         PARTITION BY reception.id
+         ORDER BY guest.service_start_at, guest.id
+       )
+        ORDER BY guest.service_start_at, guest.id`,
+      [receptionId, customerId],
+    ),
+  ]);
+  const first = result.rows[0];
+  if (!first) {
+    throw new AppError(404, "RECEPTION_NOT_FOUND", "没有找到这条预约记录");
+  }
+  const serverNow = clock.rows[0]!.now;
+  return {
+    serverNow: serverNow.toISOString(),
+    ...toCustomerReceptionSummary(first, serverNow),
+    guests: result.rows.map((row) => ({
+      id: row.guest_id,
+      clientGuestId: row.client_guest_id,
+      serviceItemName: row.guest_service_item_name,
+      therapistName: row.guest_therapist_name,
+      serviceStartAt: row.guest_service_start_at.toISOString(),
+      serviceEndAt: row.guest_service_end_at.toISOString(),
+      durationMinutes: row.guest_duration_minutes,
+      quoteCents: String(row.guest_quote_cents),
+    })),
+  };
 }
 
 async function loadAssignmentConfig(
@@ -212,6 +661,25 @@ async function loadAssignmentConfig(
     ],
   );
   return result.rows[0];
+}
+
+async function listActiveFacilityPairs(client: PoolClient, storeId: string) {
+  const result = await client.query<FacilityPairRow>(
+    `SELECT room.id AS room_resource_id,
+            bed.id AS bed_resource_id
+       FROM resources AS room
+       JOIN resources AS bed
+         ON bed.store_id = room.store_id
+        AND bed.parent_resource_id = room.id
+        AND bed.resource_type = 'bed'
+        AND bed.active = true
+      WHERE room.store_id = $1
+        AND room.resource_type = 'room'
+        AND room.active = true
+      ORDER BY room.created_at, room.id, bed.created_at, bed.id`,
+    [storeId],
+  );
+  return result.rows;
 }
 
 function buildAssignment(
@@ -442,12 +910,104 @@ async function buildAssignments(
     if (!config) {
       throw new AppError(
         409,
-        "ASSIGNMENT_INVALID",
-        "服务项目或所选美容师、房间、床位不可用",
+        "CANDIDATE_CHANGED",
+        "服务项目、人员或场地规则已经变化，请重新选择",
       );
     }
     assignments.push(buildAssignment(request, config, store));
   }
+
+  const earliest = earliestPrepareAt(assignments).getTime();
+  const latest = latestOccupationAt(assignments).getTime();
+  if (latest - earliest > MAX_ALLOCATION_SPAN_MS) {
+    throw new AppError(
+      409,
+      "GROUP_SPAN_NOT_ENABLED",
+      "当前阶段同一组预约的整体占用不能超过24小时",
+    );
+  }
+  return assignments;
+}
+
+async function buildAutomaticallyAssigned(
+  client: PoolClient,
+  storeId: string,
+  store: StoreRow,
+  requestedAssignments: CustomerRequestedAssignment[],
+  decisionNow: Date,
+) {
+  const guestIds = new Set<string>();
+  const therapistIds = new Set<string>();
+  const usedRoomIds = new Set<string>();
+  const usedBedIds = new Set<string>();
+  const facilityPairs = await listActiveFacilityPairs(client, storeId);
+  const choices: CandidateAssignment[][] = [];
+
+  for (const request of requestedAssignments) {
+    if (guestIds.has(request.clientGuestId)) {
+      throw new AppError(400, "DUPLICATE_GUEST", "同一位同行顾客只能出现一次");
+    }
+    if (therapistIds.has(request.therapistResourceId)) {
+      throw new AppError(
+        409,
+        "SHARED_RESOURCE_NOT_ENABLED",
+        "当前阶段一组预约中的美容师不能重复选择",
+      );
+    }
+    guestIds.add(request.clientGuestId);
+    therapistIds.add(request.therapistResourceId);
+
+    const availableChoices: CandidateAssignment[] = [];
+    for (const pair of facilityPairs) {
+      const assignedRequest: RequestedAssignment = {
+        ...request,
+        roomResourceId: pair.room_resource_id,
+        bedResourceId: pair.bed_resource_id,
+      };
+      const assignmentConfig = await loadAssignmentConfig(
+        client,
+        storeId,
+        assignedRequest,
+      );
+      if (!assignmentConfig) continue;
+      const assignment = buildAssignment(
+        assignedRequest,
+        assignmentConfig,
+        store,
+      );
+      if (
+        await assignmentIsAvailable(client, storeId, assignment, decisionNow)
+      ) {
+        availableChoices.push(assignment);
+      }
+    }
+    if (availableChoices.length === 0) return undefined;
+    choices.push(availableChoices);
+  }
+
+  const assignments: CandidateAssignment[] = [];
+  // ponytail: the public contract is capped at 8 guests; use a larger-scale
+  // matching algorithm only if that limit is raised.
+  const assignNext = (index: number): boolean => {
+    if (index === choices.length) return true;
+    for (const choice of choices[index]!) {
+      if (
+        usedRoomIds.has(choice.roomResourceId) ||
+        usedBedIds.has(choice.bedResourceId)
+      ) {
+        continue;
+      }
+      usedRoomIds.add(choice.roomResourceId);
+      usedBedIds.add(choice.bedResourceId);
+      assignments.push(choice);
+      if (assignNext(index + 1)) return true;
+      assignments.pop();
+      usedRoomIds.delete(choice.roomResourceId);
+      usedBedIds.delete(choice.bedResourceId);
+    }
+    return false;
+  };
+  if (!assignNext(0)) return undefined;
 
   const earliest = earliestPrepareAt(assignments).getTime();
   const latest = latestOccupationAt(assignments).getTime();
@@ -482,7 +1042,7 @@ export async function queryAvailability(
   config: AppConfig,
   identity: CustomerIdentity,
   storeId: string,
-  requestedAssignments: RequestedAssignment[],
+  requestedAssignments: CustomerRequestedAssignment[],
 ): Promise<AvailabilityResult> {
   const client = await database.pool.connect();
   try {
@@ -490,28 +1050,39 @@ export async function queryAvailability(
     if (!store) {
       throw new AppError(404, "STORE_NOT_FOUND", "门店不存在或已停用");
     }
-    const assignments = await buildAssignments(
-      client,
-      storeId,
-      store,
-      requestedAssignments,
-    );
+    if (store.booking_creation_mode === "paused_for_policy_activation") {
+      throw new AppError(
+        503,
+        "BOOKING_CREATION_PAUSED",
+        "门店正在启用新的预约时间，请稍后重试",
+      );
+    }
     const nowResult = await client.query<{ now: Date }>(
       "SELECT clock_timestamp() AS now",
     );
     const decisionNow = nowResult.rows[0]?.now;
     if (!decisionNow) throw new Error("Database did not return current time");
-
-    if (
-      !(await allAssignmentsAvailable(
-        client,
-        storeId,
-        assignments,
-        decisionNow,
-      ))
-    ) {
-      return { available: false, reason: "所选时间或资源当前不可用" };
+    const assignments = await buildAutomaticallyAssigned(
+      client,
+      storeId,
+      store,
+      requestedAssignments,
+      decisionNow,
+    );
+    if (!assignments) {
+      return {
+        available: false,
+        reasonCode: "RESOURCE_UNAVAILABLE",
+        reason: "所选时间或资源当前不可用",
+      };
     }
+    const policy = await assertBookingPolicyAllows(
+      client,
+      storeId,
+      store,
+      assignments,
+      decisionNow,
+    );
 
     const quoteCents = assignments.reduce(
       (total, item) => total + item.quoteCents,
@@ -522,7 +1093,27 @@ export async function queryAvailability(
     }
     const firstWorkAt = earliestPrepareAt(assignments);
     if (firstWorkAt <= decisionNow) {
-      return { available: false, reason: "距离开始时间过近，无法完成确认" };
+      return {
+        available: false,
+        reasonCode: "CONFIRMATION_TOO_LATE",
+        reason: "距离开始时间过近，无法完成确认",
+      };
+    }
+    if (
+      policy &&
+      isBookingPolicyV2(policy.payload) &&
+      !onlineConfirmationDeadline(
+        policy.payload,
+        store.timezone,
+        decisionNow,
+        firstWorkAt,
+      )
+    ) {
+      return {
+        available: false,
+        reasonCode: "BOOKING_CONFIRMATION_WINDOW_UNAVAILABLE",
+        reason: "服务准备开始前没有前台可处理线上申请的时间",
+      };
     }
     const expiresAt = new Date(
       Math.min(
@@ -530,8 +1121,7 @@ export async function queryAvailability(
         firstWorkAt.getTime(),
       ),
     );
-    const candidate: BookingCandidate = {
-      version: 1,
+    const candidateFields = {
       sessionId: identity.sessionId,
       customerId: identity.customerId,
       storeId,
@@ -539,6 +1129,18 @@ export async function queryAvailability(
       assignments,
       quoteCents,
     };
+    const candidate: BookingCandidate =
+      policy && isBookingPolicyV2(policy.payload)
+        ? {
+            version: 2,
+            ...candidateFields,
+            policySnapshot: {
+              revisionId: policy.id,
+              publishedVersion: policy.published_version!,
+              onlineHoldMinutes: policy.payload.onlineHoldMinutes,
+            },
+          }
+        : { version: 1, ...candidateFields };
     return {
       available: true,
       candidateToken: signBookingCandidate(
@@ -636,6 +1238,12 @@ function requestHash(candidateToken: string) {
   return createHash("sha256").update(candidateToken).digest("hex");
 }
 
+function isStoredBookingFailure(value: unknown): value is StoredBookingFailure {
+  return Boolean(
+    value && typeof value === "object" && "bookingFailure" in value,
+  );
+}
+
 async function reserveBusinessEvent<T>(
   client: PoolClient,
   actorType: "customer" | "staff",
@@ -672,6 +1280,15 @@ async function reserveBusinessEvent<T>(
       "该提交标识已用于其他预约，请刷新后重试",
     );
   }
+  if (isStoredBookingFailure(event.response)) {
+    const failure = event.response.bookingFailure;
+    throw new AppError(
+      failure.statusCode,
+      failure.code,
+      failure.message,
+      failure.details,
+    );
+  }
   if (!event.response) {
     throw new AppError(
       409,
@@ -680,6 +1297,25 @@ async function reserveBusinessEvent<T>(
     );
   }
   return { response: event.response };
+}
+
+async function completeBusinessEventFailure(
+  client: PoolClient,
+  eventId: string,
+  error: AppError,
+) {
+  const response: StoredBookingFailure = {
+    bookingFailure: {
+      statusCode: error.statusCode,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    },
+  };
+  await client.query(
+    "UPDATE business_events SET response = $2::jsonb WHERE id = $1",
+    [eventId, JSON.stringify(response)],
+  );
 }
 
 function appendSegment(
@@ -708,13 +1344,30 @@ async function insertReception(
   client: PoolClient,
   candidate: BookingCandidate,
   decisionNow: Date,
+  timeZone: string,
+  policy?: BookingPolicyPayloadV2,
 ) {
-  const confirmationDeadline = new Date(
-    Math.min(
-      decisionNow.getTime() + HOLD_DURATION_MS,
-      earliestPrepareAt(candidate.assignments).getTime(),
-    ),
-  );
+  const firstWorkAt = earliestPrepareAt(candidate.assignments);
+  const timedDeadline =
+    candidate.version === 2 && policy
+      ? onlineConfirmationDeadline(policy, timeZone, decisionNow, firstWorkAt)
+      : undefined;
+  const confirmationDeadline =
+    candidate.version === 2
+      ? timedDeadline?.deadline
+      : new Date(
+          Math.min(
+            decisionNow.getTime() + HOLD_DURATION_MS,
+            firstWorkAt.getTime(),
+          ),
+        );
+  if (!confirmationDeadline) {
+    throw new AppError(
+      409,
+      "BOOKING_CONFIRMATION_WINDOW_UNAVAILABLE",
+      "服务准备开始前没有前台可处理线上申请的时间，请选择更晚的时段",
+    );
+  }
   if (confirmationDeadline <= decisionNow) {
     throw new AppError(
       409,
@@ -722,6 +1375,25 @@ async function insertReception(
       "已没有可用的确认时间，请重新选择稍后的时间",
     );
   }
+  const confirmationHoldComputation =
+    candidate.version === 2 && timedDeadline
+      ? {
+          version: 2,
+          mode: "online",
+          policyRevisionId: candidate.policySnapshot.revisionId,
+          policyPublishedVersion: candidate.policySnapshot.publishedVersion,
+          configuredMinutes: candidate.policySnapshot.onlineHoldMinutes,
+          calculationStartedAt: decisionNow.toISOString(),
+          earliestPrepareAt: firstWorkAt.toISOString(),
+          accumulatedMilliseconds: timedDeadline.accumulatedMs,
+          truncated: timedDeadline.truncated,
+          deadline: confirmationDeadline.toISOString(),
+          processingSegments: timedDeadline.segments.map((segment) => ({
+            startAt: segment.startAt.toISOString(),
+            endAt: segment.endAt.toISOString(),
+          })),
+        }
+      : undefined;
   const receptionResult = await client.query<{ id: string }>(
     `INSERT INTO receptions (
        store_id, customer_id, state, confirmation_deadline, quote_cents
@@ -772,7 +1444,12 @@ async function insertReception(
         assignment.therapistCleanupMinutes,
         assignment.facilityCleanupMinutes,
         assignment.restMinutes,
-        JSON.stringify(assignment.ruleSnapshot),
+        JSON.stringify({
+          ...assignment.ruleSnapshot,
+          ...(confirmationHoldComputation
+            ? { confirmationHoldComputation }
+            : {}),
+        }),
       ],
     );
     const receptionGuestId = guestResult.rows[0]?.id;
@@ -879,15 +1556,46 @@ async function insertReception(
 async function createHoldAttempt(
   database: Database,
   identity: CustomerIdentity,
-  candidate: BookingCandidate,
   candidateToken: string,
   idempotencyKey: string,
+  bookingTokenSecret: string,
   additionalLockKeys: Set<number>,
 ) {
   const client = await database.pool.connect();
+  let eventId: string | undefined;
+  let operationStarted = false;
   try {
     await client.query("BEGIN");
     await client.query(`SET LOCAL lock_timeout = '${LOCK_TIMEOUT_MS}ms'`);
+
+    const event = await reserveBusinessEvent<HoldReceptionResult>(
+      client,
+      "customer",
+      identity.customerId,
+      "reception.create_hold",
+      idempotencyKey,
+      requestHash(candidateToken),
+    );
+    if (event.response) {
+      await client.query("COMMIT");
+      return event.response;
+    }
+    eventId = event.id;
+    await client.query("SAVEPOINT reception_create_hold");
+    operationStarted = true;
+
+    const candidate = verifyBookingCandidate(
+      candidateToken,
+      bookingTokenSecret,
+    );
+    if (candidate.customerId !== identity.customerId) {
+      throw new AppError(
+        403,
+        "CANDIDATE_OWNER_MISMATCH",
+        "预约候选不属于当前登录账号",
+      );
+    }
+
     const storeBeforeLock = await loadStore(client, candidate.storeId);
     if (!storeBeforeLock) {
       throw new AppError(404, "STORE_NOT_FOUND", "门店不存在或已停用");
@@ -896,7 +1604,7 @@ async function createHoldAttempt(
       storeBeforeLock.lock_key,
       TOPOLOGY_LOCK_KEY,
     ]);
-    const store = await loadStore(client, candidate.storeId);
+    const store = await loadStore(client, candidate.storeId, true);
     if (!store) {
       throw new AppError(404, "STORE_NOT_FOUND", "门店不存在或已停用");
     }
@@ -911,17 +1619,12 @@ async function createHoldAttempt(
       ]);
     }
 
-    const event = await reserveBusinessEvent<HoldReceptionResult>(
-      client,
-      "customer",
-      identity.customerId,
-      "reception.create_hold",
-      idempotencyKey,
-      requestHash(candidateToken),
-    );
-    if (event.response) {
-      await client.query("COMMIT");
-      return event.response;
+    if (candidate.sessionId !== identity.sessionId) {
+      throw new AppError(
+        403,
+        "CANDIDATE_OWNER_MISMATCH",
+        "预约候选不属于当前登录会话",
+      );
     }
 
     const nowResult = await client.query<{ now: Date }>(
@@ -937,6 +1640,31 @@ async function createHoldAttempt(
         409,
         "CANDIDATE_EXPIRED",
         "预约候选已过期，请重新查询",
+      );
+    }
+
+    const policy = await assertBookingPolicyAllows(
+      client,
+      candidate.storeId,
+      store,
+      candidate.assignments,
+      decisionNow,
+    );
+    if (
+      candidate.version === 2
+        ? !policy ||
+          !isBookingPolicyV2(policy.payload) ||
+          policy.id !== candidate.policySnapshot.revisionId ||
+          policy.published_version !==
+            candidate.policySnapshot.publishedVersion ||
+          policy.payload.onlineHoldMinutes !==
+            candidate.policySnapshot.onlineHoldMinutes
+        : policy && isBookingPolicyV2(policy.payload)
+    ) {
+      throw new AppError(
+        409,
+        "CANDIDATE_CHANGED",
+        "预约政策已经变化，请重新查询可约时间",
       );
     }
 
@@ -987,7 +1715,13 @@ async function createHoldAttempt(
       );
     }
 
-    const result = await insertReception(client, candidate, decisionNow);
+    const result = await insertReception(
+      client,
+      candidate,
+      decisionNow,
+      store.timezone,
+      policy && isBookingPolicyV2(policy.payload) ? policy.payload : undefined,
+    );
     await client.query(
       "UPDATE business_events SET response = $2::jsonb WHERE id = $1",
       [event.id, JSON.stringify(result)],
@@ -995,15 +1729,32 @@ async function createHoldAttempt(
     await client.query("COMMIT");
     return result;
   } catch (error) {
-    await client.query("ROLLBACK");
-    if (postgresCode(error) === "23P01") {
-      throw new AppError(
-        409,
-        "CANDIDATE_CHANGED",
-        "所选时间或资源已被占用，请重新选择",
-      );
+    const reportedError =
+      postgresCode(error) === "23P01"
+        ? new AppError(
+            409,
+            "CANDIDATE_CHANGED",
+            "所选时间或资源已被占用，请重新选择",
+          )
+        : error;
+    if (
+      eventId &&
+      operationStarted &&
+      reportedError instanceof AppError &&
+      reportedError.statusCode < 500
+    ) {
+      try {
+        await client.query("ROLLBACK TO SAVEPOINT reception_create_hold");
+        await completeBusinessEventFailure(client, eventId, reportedError);
+        await client.query("COMMIT");
+      } catch (persistenceError) {
+        await client.query("ROLLBACK");
+        throw persistenceError;
+      }
+    } else {
+      await client.query("ROLLBACK");
     }
-    throw error;
+    throw reportedError;
   } finally {
     client.release();
   }
@@ -1012,21 +1763,10 @@ async function createHoldAttempt(
 export async function createHoldReception(
   database: Database,
   identity: CustomerIdentity,
-  candidate: BookingCandidate,
   candidateToken: string,
   idempotencyKey: string,
+  bookingTokenSecret: string,
 ) {
-  if (
-    candidate.customerId !== identity.customerId ||
-    candidate.sessionId !== identity.sessionId
-  ) {
-    throw new AppError(
-      403,
-      "CANDIDATE_OWNER_MISMATCH",
-      "预约候选不属于当前登录会话",
-    );
-  }
-
   const additionalLockKeys = new Set<number>();
   let lockAttempts = 0;
   let expansionAttempts = 0;
@@ -1035,9 +1775,9 @@ export async function createHoldReception(
       return await createHoldAttempt(
         database,
         identity,
-        candidate,
         candidateToken,
         idempotencyKey,
+        bookingTokenSecret,
         additionalLockKeys,
       );
     } catch (error) {

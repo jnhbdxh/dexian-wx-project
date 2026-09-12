@@ -25,6 +25,16 @@ const timestamps = {
     .defaultNow(),
 };
 
+export const bookingCreationMode = pgEnum("booking_creation_mode", [
+  "legacy",
+  "paused_for_policy_activation",
+  "policy_enforced",
+]);
+export const bookingPolicyRevisionKind = pgEnum(
+  "booking_policy_revision_kind",
+  ["draft", "published"],
+);
+
 export const stores = pgTable(
   "stores",
   {
@@ -35,6 +45,9 @@ export const stores = pgTable(
     bookingConfigVersion: integer("booking_config_version")
       .notNull()
       .default(1),
+    bookingCreationMode: bookingCreationMode("booking_creation_mode")
+      .notNull()
+      .default("legacy"),
     defaultPrepareMinutes: integer("default_prepare_minutes"),
     defaultTherapistCleanupMinutes: integer(
       "default_therapist_cleanup_minutes",
@@ -72,6 +85,54 @@ export const staffUsers = pgTable(
   (table) => [
     uniqueIndex("staff_users_username_unique").on(table.username),
     unique("staff_users_store_id_id_unique").on(table.storeId, table.id),
+  ],
+);
+
+export const bookingPolicyRevisions = pgTable(
+  "booking_policy_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "restrict" }),
+    kind: bookingPolicyRevisionKind("kind").notNull(),
+    sourceDraftRevisionId: uuid("source_draft_revision_id"),
+    publishedVersion: integer("published_version"),
+    basePublishedVersion: integer("base_published_version"),
+    payload: jsonb("payload").notNull(),
+    createdByStaffId: uuid("created_by_staff_id").notNull(),
+    changeReason: text("change_reason"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.storeId, table.createdByStaffId],
+      foreignColumns: [staffUsers.storeId, staffUsers.id],
+      name: "booking_policy_revisions_created_by_fk",
+    }).onDelete("restrict"),
+    uniqueIndex("booking_policy_revisions_store_published_unique")
+      .on(table.storeId, table.publishedVersion)
+      .where(sql`${table.publishedVersion} IS NOT NULL`),
+    index("booking_policy_revisions_store_kind_created_idx").on(
+      table.storeId,
+      table.kind,
+      table.createdAt,
+      table.id,
+    ),
+    check(
+      "booking_policy_revisions_state_check",
+      sql`(${table.kind} = 'draft' AND ${table.sourceDraftRevisionId} IS NULL AND ${table.publishedVersion} IS NULL AND ${table.publishedAt} IS NULL)
+        OR (${table.kind} = 'published' AND ${table.publishedVersion} IS NOT NULL AND ${table.publishedVersion} > 0
+          AND ${table.sourceDraftRevisionId} IS NOT NULL AND ${table.publishedAt} IS NOT NULL
+          AND length(trim(${table.changeReason})) > 0)`,
+    ),
+    check(
+      "booking_policy_revisions_base_version_check",
+      sql`${table.basePublishedVersion} IS NULL OR ${table.basePublishedVersion} > 0`,
+    ),
   ],
 );
 
@@ -194,6 +255,71 @@ export const customerSessions = pgTable(
   },
   (table) => [
     uniqueIndex("customer_sessions_token_hash_unique").on(table.tokenHash),
+  ],
+);
+
+export const phoneVerificationPurpose = pgEnum("phone_verification_purpose", [
+  "bind_phone",
+]);
+
+export const smsVerifications = pgTable(
+  "sms_verifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    phone: text("phone").notNull(),
+    purpose: phoneVerificationPurpose("purpose").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attemptsRemaining: integer("attempts_remaining").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    nextSendAt: timestamp("next_send_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    providerMessageId: text("provider_message_id"),
+    ...timestamps,
+  },
+  (table) => [
+    check(
+      "sms_verifications_attempts_nonnegative_check",
+      sql`${table.attemptsRemaining} >= 0`,
+    ),
+    index("sms_verifications_customer_created_idx").on(
+      table.customerId,
+      table.createdAt,
+    ),
+    index("sms_verifications_phone_created_idx").on(
+      table.phone,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const customerPhoneBindings = pgTable(
+  "customer_phone_bindings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "restrict" }),
+    phone: text("phone").notNull(),
+    verificationId: uuid("verification_id")
+      .notNull()
+      .references(() => smsVerifications.id, { onDelete: "restrict" }),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("customer_phone_bindings_active_customer_unique")
+      .on(table.customerId)
+      .where(sql`${table.revokedAt} IS NULL`),
+    uniqueIndex("customer_phone_bindings_active_phone_unique")
+      .on(table.phone)
+      .where(sql`${table.revokedAt} IS NULL`),
+    uniqueIndex("customer_phone_bindings_verification_unique").on(
+      table.verificationId,
+    ),
   ],
 );
 
@@ -460,6 +586,11 @@ export const receptions = pgTable(
       table.state,
       table.confirmationDeadline,
     ),
+    index("receptions_customer_created_idx").on(
+      table.customerId,
+      table.createdAt,
+      table.id,
+    ),
   ],
 );
 
@@ -659,6 +790,7 @@ export const businessEvents = pgTable(
     operationType: text("operation_type").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
     requestHash: text("request_hash").notNull(),
+    requestPayload: jsonb("request_payload"),
     response: jsonb("response"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -670,6 +802,120 @@ export const businessEvents = pgTable(
       table.actorId,
       table.operationType,
       table.idempotencyKey,
+    ),
+  ],
+);
+
+export const paymentTransactionState = pgEnum("payment_transaction_state", [
+  "created",
+  "processing",
+  "succeeded",
+  "failed",
+  "unknown",
+  "manual_review",
+]);
+
+export const orders = pgTable(
+  "orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "restrict" }),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "restrict" }),
+    receptionId: uuid("reception_id")
+      .notNull()
+      .references(() => receptions.id, { onDelete: "restrict" }),
+    payableCents: integer("payable_cents").notNull(),
+    currency: text("currency").notNull().default("CNY"),
+    quoteSnapshot: jsonb("quote_snapshot").notNull(),
+    collectionDeadline: timestamp("collection_deadline", {
+      withTimezone: true,
+    }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("orders_reception_unique").on(table.receptionId),
+    check("orders_payable_positive_check", sql`${table.payableCents} > 0`),
+    check("orders_currency_check", sql`${table.currency} = 'CNY'`),
+    index("orders_customer_created_idx").on(table.customerId, table.createdAt),
+  ],
+);
+
+export const paymentTransactions = pgTable(
+  "payment_transactions",
+  {
+    id: uuid("id").primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "restrict" }),
+    channel: text("channel").notNull().default("wechat"),
+    state: paymentTransactionState("state").notNull(),
+    outTradeNo: text("out_trade_no").notNull(),
+    channelTransactionId: text("channel_transaction_id"),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull().default("CNY"),
+    payerOpenId: text("payer_open_id").notNull(),
+    prepayId: text("prepay_id"),
+    prepayExpiresAt: timestamp("prepay_expires_at", { withTimezone: true }),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }),
+    checkAttempts: integer("check_attempts").notNull().default(0),
+    leaseToken: uuid("lease_token"),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    succeededAt: timestamp("succeeded_at", { withTimezone: true }),
+    lastErrorCode: text("last_error_code"),
+    lastErrorMessage: text("last_error_message"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("payment_transactions_order_channel_unique").on(
+      table.orderId,
+      table.channel,
+    ),
+    uniqueIndex("payment_transactions_out_trade_no_unique").on(
+      table.outTradeNo,
+    ),
+    uniqueIndex("payment_transactions_channel_id_unique").on(
+      table.channelTransactionId,
+    ),
+    check(
+      "payment_transactions_amount_positive_check",
+      sql`${table.amountCents} > 0`,
+    ),
+    check(
+      "payment_transactions_currency_check",
+      sql`${table.currency} = 'CNY'`,
+    ),
+    check(
+      "payment_transactions_channel_check",
+      sql`${table.channel} = 'wechat'`,
+    ),
+    check(
+      "payment_transactions_success_check",
+      sql`(${table.state} = 'succeeded' AND ${table.channelTransactionId} IS NOT NULL AND ${table.succeededAt} IS NOT NULL)
+        OR (${table.state} <> 'succeeded' AND ${table.succeededAt} IS NULL)`,
+    ),
+    check(
+      "payment_transactions_prepay_pair_check",
+      sql`(${table.prepayId} IS NULL) = (${table.prepayExpiresAt} IS NULL)`,
+    ),
+    check(
+      "payment_transactions_lease_pair_check",
+      sql`(${table.leaseToken} IS NULL) = (${table.leaseUntil} IS NULL)`,
+    ),
+    check(
+      "payment_transactions_check_attempts_nonnegative_check",
+      sql`${table.checkAttempts} >= 0`,
+    ),
+    index("payment_transactions_state_updated_idx").on(
+      table.state,
+      table.updatedAt,
+    ),
+    index("payment_transactions_reconcile_idx").on(
+      table.state,
+      table.nextCheckAt,
     ),
   ],
 );

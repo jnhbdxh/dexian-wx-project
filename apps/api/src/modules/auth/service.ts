@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { and, eq, gt, isNull } from "drizzle-orm";
 
 import type { Database } from "../../db/client.js";
@@ -12,6 +14,7 @@ import {
   wechatIdentities,
 } from "../../db/schema.js";
 import { createToken, hashToken } from "../../lib/crypto.js";
+import { AppError } from "../../lib/app-error.js";
 
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const CUSTOMER_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -168,4 +171,89 @@ export async function findCustomerSession(database: Database, token: string) {
     .limit(1);
 
   return row;
+}
+
+export async function requireCustomerSession(
+  database: Database,
+  authorization: string | undefined,
+) {
+  const [scheme, token, extra] = authorization?.split(" ") ?? [];
+  if (scheme !== "Bearer" || !token || extra) {
+    throw new AppError(401, "AUTH_REQUIRED", "请先登录");
+  }
+  const session = await findCustomerSession(database, token);
+  if (!session) {
+    throw new AppError(401, "AUTH_REQUIRED", "登录已失效，请重新登录");
+  }
+  return session;
+}
+
+export async function createWechatCustomerSession(
+  database: Database,
+  appId: string,
+  openId: string,
+  unionId?: string,
+) {
+  const client = await database.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const existing = await client.query<{ customer_id: string }>(
+      `SELECT customer_id
+         FROM wechat_identities
+        WHERE app_id = $1 AND open_id = $2
+        FOR UPDATE`,
+      [appId, openId],
+    );
+    let customerId = existing.rows[0]?.customer_id;
+
+    if (!customerId) {
+      const candidateCustomerId = randomUUID();
+      await client.query("INSERT INTO customers (id) VALUES ($1)", [
+        candidateCustomerId,
+      ]);
+      const inserted = await client.query<{ customer_id: string }>(
+        `INSERT INTO wechat_identities (customer_id, app_id, open_id, union_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (app_id, open_id) DO NOTHING
+         RETURNING customer_id`,
+        [candidateCustomerId, appId, openId, unionId ?? null],
+      );
+      customerId = inserted.rows[0]?.customer_id;
+      if (!customerId) {
+        await client.query("DELETE FROM customers WHERE id = $1", [
+          candidateCustomerId,
+        ]);
+        const raced = await client.query<{ customer_id: string }>(
+          `SELECT customer_id
+             FROM wechat_identities
+            WHERE app_id = $1 AND open_id = $2`,
+          [appId, openId],
+        );
+        customerId = raced.rows[0]?.customer_id;
+      }
+    } else if (unionId) {
+      await client.query(
+        `UPDATE wechat_identities
+            SET union_id = COALESCE(union_id, $3)
+          WHERE app_id = $1 AND open_id = $2`,
+        [appId, openId, unionId],
+      );
+    }
+
+    if (!customerId) throw new Error("Failed to create WeChat identity");
+    const token = createToken();
+    const expiresAt = new Date(Date.now() + CUSTOMER_SESSION_DURATION_MS);
+    await client.query(
+      `INSERT INTO customer_sessions (customer_id, token_hash, expires_at)
+       VALUES ($1, $2, $3)`,
+      [customerId, hashToken(token), expiresAt],
+    );
+    await client.query("COMMIT");
+    return { token, customerId, expiresAt };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }

@@ -13,7 +13,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "admin:bootstrap": "tsx src/scripts/bootstrap-admin.ts"
+    "admin:bootstrap": "tsx src/scripts/bootstrap-admin.ts",
+    "booking-policy:grant-role": "tsx src/scripts/grant-booking-policy-role.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",

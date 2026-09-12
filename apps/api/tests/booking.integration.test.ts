@@ -40,8 +40,6 @@ function assignment(startAt: Date, selectedServiceItemId = serviceItemId) {
     clientGuestId: "guest-1",
     serviceItemId: selectedServiceItemId,
     therapistResourceId: therapistId,
-    roomResourceId: roomId,
-    bedResourceId: bedId,
     serviceStartAt: startAt.toISOString(),
   };
 }
@@ -262,6 +260,62 @@ describe.runIf(hasDatabase)("booking hold integration", () => {
     }
   });
 
+  it("returns a public booking catalog without facility identifiers", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/booking/catalog",
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    const store = response
+      .json()
+      .stores.find((item: { id: string }) => item.id === storeId);
+    expect(store).toMatchObject({
+      id: storeId,
+      timezone: "Asia/Shanghai",
+    });
+    expect(
+      store.services.find((item: { id: string }) => item.id === serviceItemId),
+    ).toMatchObject({
+      name: expect.any(String),
+      durationMinutes: 60,
+      priceCents: "9500",
+      therapists: expect.arrayContaining([
+        expect.objectContaining({ id: therapistId }),
+      ]),
+    });
+    expect(response.body).not.toContain(roomId);
+    expect(response.body).not.toContain(bedId);
+    expect(response.body).not.toContain(secondRoomId);
+    expect(response.body).not.toContain(secondBedId);
+  });
+
+  it("returns a public booking catalog without facility identifiers", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/booking/catalog",
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    const store = response
+      .json()
+      .stores.find((item: { id: string }) => item.id === storeId);
+    expect(store).toMatchObject({ id: storeId, name: expect.any(String) });
+    const service = store.services.find(
+      (item: { id: string }) => item.id === serviceItemId,
+    );
+    expect(service).toMatchObject({
+      id: serviceItemId,
+      durationMinutes: 60,
+      priceCents: "9500",
+    });
+    expect(service.therapists).toContainEqual({
+      id: therapistId,
+      name: expect.any(String),
+    });
+    expect(response.body).not.toContain(roomId);
+    expect(response.body).not.toContain(bedId);
+  });
+
   it("caps a multi-guest confirmation window at the earliest work start", async () => {
     const firstStart = new Date(Date.now() + 30_000);
     const secondStart = new Date(Date.now() + 90_000);
@@ -277,8 +331,6 @@ describe.runIf(hasDatabase)("booking hold integration", () => {
             clientGuestId: "guest-2",
             serviceItemId: nearServiceItemId,
             therapistResourceId: secondTherapistId,
-            roomResourceId: secondRoomId,
-            bedResourceId: secondBedId,
             serviceStartAt: secondStart.toISOString(),
           },
         ],
@@ -462,7 +514,7 @@ describe.runIf(hasDatabase)("booking hold integration", () => {
         WHERE actor_id = $1 AND idempotency_key = $2`,
       [customerId, idempotencyKey],
     );
-    expect(events.rows[0]?.count).toBe("0");
+    expect(events.rows[0]?.count).toBe("1");
   }, 10_000);
 
   it("expands expired-group date locks and times out with a retryable error", async () => {
@@ -596,7 +648,7 @@ describe.runIf(hasDatabase)("booking hold integration", () => {
     );
   }, 12_000);
 
-  it("returns an explicit-resource candidate that may cross midnight", async () => {
+  it("auto-assigns a stable facility pair without exposing it", async () => {
     const response = await queryAvailability(slotStart);
 
     expect(response.statusCode).toBe(200);
@@ -604,16 +656,363 @@ describe.runIf(hasDatabase)("booking hold integration", () => {
     expect(body.available).toBe(true);
     expect(body.quoteCents).toBe("9500");
     expect(body.assignments[0].quoteCents).toBe("9500");
-    expect(body.assignments[0]).toMatchObject({
+    expect(body.assignments[0]).not.toHaveProperty("roomResourceId");
+    expect(body.assignments[0]).not.toHaveProperty("bedResourceId");
+    expect(body.candidateToken).not.toContain(roomId);
+    expect(body.candidateToken).not.toContain(bedId);
+
+    const internalCandidate = verifyBookingCandidate(
+      body.candidateToken,
+      config.bookingTokenSecret,
+    );
+    expect(internalCandidate.assignments[0]).toMatchObject({
+      roomResourceId: roomId,
+      bedResourceId: bedId,
       prepareMinutes: 15,
       therapistCleanupMinutes: 10,
       facilityCleanupMinutes: 20,
       restMinutes: 30,
     });
-    expect(shanghaiDate(new Date(body.assignments[0].restEndAt))).not.toBe(
-      shanghaiDate(slotStart),
+    expect(
+      shanghaiDate(new Date(internalCandidate.assignments[0]!.restEndAt)),
+    ).not.toBe(shanghaiDate(slotStart));
+
+    const repeated = await queryAvailability(slotStart);
+    const repeatedCandidate = verifyBookingCandidate(
+      repeated.json().candidateToken,
+      config.bookingTokenSecret,
     );
+    expect(repeatedCandidate.assignments[0]!.roomResourceId).toBe(roomId);
+    expect(repeatedCandidate.assignments[0]!.bedResourceId).toBe(bedId);
     candidateToken = body.candidateToken;
+  });
+
+  it("uses the same active facility rule when automatically assigning", async () => {
+    await database.pool.query(
+      "UPDATE resources SET active = false WHERE id = $1",
+      [roomId],
+    );
+    try {
+      const response = await queryAvailability(
+        new Date(slotStart.getTime() + 3 * 60 * 60_000),
+      );
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().available).toBe(true);
+      const selected = verifyBookingCandidate(
+        response.json().candidateToken,
+        config.bookingTokenSecret,
+      ).assignments[0]!;
+      expect(selected.roomResourceId).toBe(secondRoomId);
+      expect(selected.bedResourceId).toBe(secondBedId);
+
+      await database.pool.query(
+        "UPDATE resources SET active = false WHERE id = $1",
+        [secondRoomId],
+      );
+      const unavailable = await queryAvailability(
+        new Date(slotStart.getTime() + 5 * 60 * 60_000),
+      );
+      expect(unavailable.statusCode, unavailable.body).toBe(200);
+      expect(unavailable.json()).toEqual({
+        available: false,
+        reasonCode: "RESOURCE_UNAVAILABLE",
+        reason: "所选时间或资源当前不可用",
+      });
+      expect(unavailable.body).not.toContain(roomId);
+      expect(unavailable.body).not.toContain(bedId);
+      expect(unavailable.body).not.toContain(secondRoomId);
+      expect(unavailable.body).not.toContain(secondBedId);
+    } finally {
+      await database.pool.query(
+        "UPDATE resources SET active = true WHERE id = ANY($1::uuid[])",
+        [[roomId, secondRoomId]],
+      );
+    }
+  });
+
+  it("backtracks to find a complete multi-guest facility assignment", async () => {
+    const startAt = new Date(slotStart.getTime() + 6 * 60 * 60_000);
+    const longService = await database.pool.query<{ id: string }>(
+      `INSERT INTO service_items (
+         store_id, name, duration_minutes, prepare_minutes,
+         cleanup_minutes, facility_cleanup_minutes, rest_minutes, price_cents
+       ) VALUES ($1, $2, 120, 0, 0, 0, 0, 12000)
+       RETURNING id`,
+      [storeId, `组合搜索测试项目-${suffix}`],
+    );
+    const longServiceId = longService.rows[0]!.id;
+    await database.pool.query(
+      `INSERT INTO therapist_service_items (
+         store_id, therapist_resource_id, service_item_id
+       ) VALUES ($1, $2, $3)`,
+      [storeId, secondTherapistId, longServiceId],
+    );
+    const shift = await database.pool.query<{ id: string }>(
+      `INSERT INTO resource_shifts (
+         store_id, therapist_resource_id, start_at, end_at, published
+       ) VALUES ($1, $2, $3, $4, true)
+       RETURNING id`,
+      [
+        storeId,
+        secondTherapistId,
+        new Date(startAt.getTime() - 60 * 60_000),
+        new Date(startAt.getTime() + 3 * 60 * 60_000),
+      ],
+    );
+    const restriction = await database.pool.query<{ id: string }>(
+      `INSERT INTO resource_restrictions (
+         store_id, resource_id, restriction_kind, start_at, end_at
+       ) VALUES ($1, $2, 'other_unavailable', $3, $4)
+       RETURNING id`,
+      [
+        storeId,
+        secondRoomId,
+        new Date(startAt.getTime() + 90 * 60_000),
+        new Date(startAt.getTime() + 3 * 60 * 60_000),
+      ],
+    );
+    const shortRequest = {
+      clientGuestId: "short-guest",
+      serviceItemId,
+      therapistResourceId: therapistId,
+      serviceStartAt: startAt.toISOString(),
+    };
+    const longRequest = {
+      clientGuestId: "long-guest",
+      serviceItemId: longServiceId,
+      therapistResourceId: secondTherapistId,
+      serviceStartAt: startAt.toISOString(),
+    };
+
+    try {
+      for (const assignments of [
+        [shortRequest, longRequest],
+        [longRequest, shortRequest],
+      ]) {
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/v1/availability/queries",
+          headers: { authorization: `Bearer ${customerToken}` },
+          payload: { storeId, assignments },
+        });
+        expect(response.statusCode, response.body).toBe(200);
+        expect(response.json().available).toBe(true);
+        const selected = verifyBookingCandidate(
+          response.json().candidateToken,
+          config.bookingTokenSecret,
+        ).assignments;
+        expect(
+          selected.find((item) => item.clientGuestId === "short-guest"),
+        ).toMatchObject({
+          roomResourceId: secondRoomId,
+          bedResourceId: secondBedId,
+        });
+        expect(
+          selected.find((item) => item.clientGuestId === "long-guest"),
+        ).toMatchObject({
+          roomResourceId: roomId,
+          bedResourceId: bedId,
+        });
+      }
+    } finally {
+      await database.pool.query(
+        "DELETE FROM resource_restrictions WHERE id = $1",
+        [restriction.rows[0]!.id],
+      );
+      await database.pool.query("DELETE FROM resource_shifts WHERE id = $1", [
+        shift.rows[0]!.id,
+      ]);
+      await database.pool.query(
+        "DELETE FROM therapist_service_items WHERE service_item_id = $1",
+        [longServiceId],
+      );
+      await database.pool.query("DELETE FROM service_items WHERE id = $1", [
+        longServiceId,
+      ]);
+    }
+  });
+
+  it("rejects a candidate after its assigned facility is disabled", async () => {
+    const availability = await queryAvailability(
+      new Date(slotStart.getTime() + 2 * 60 * 60_000),
+    );
+    expect(availability.statusCode, availability.body).toBe(200);
+    expect(availability.json().available).toBe(true);
+    const selected = verifyBookingCandidate(
+      availability.json().candidateToken,
+      config.bookingTokenSecret,
+    ).assignments[0]!;
+    const idempotencyKey = `disabled-facility-${suffix}`;
+    const before = await database.pool.query<{
+      receptions: string;
+      allocations: string;
+    }>(
+      `SELECT
+         (SELECT count(*)::text FROM receptions WHERE store_id = $1) AS receptions,
+         (SELECT count(*)::text FROM resource_allocations WHERE store_id = $1) AS allocations`,
+      [storeId],
+    );
+
+    await database.pool.query(
+      "UPDATE resources SET active = false WHERE id = $1",
+      [selected.roomResourceId],
+    );
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/receptions",
+        headers: {
+          authorization: `Bearer ${customerToken}`,
+          "idempotency-key": idempotencyKey,
+        },
+        payload: { candidateToken: availability.json().candidateToken },
+      });
+      expect(response.statusCode, response.body).toBe(409);
+      expect(response.json().code).toBe("CANDIDATE_CHANGED");
+      const after = await database.pool.query<{
+        receptions: string;
+        allocations: string;
+        events: string;
+      }>(
+        `SELECT
+           (SELECT count(*)::text FROM receptions WHERE store_id = $1) AS receptions,
+           (SELECT count(*)::text FROM resource_allocations WHERE store_id = $1) AS allocations,
+           (SELECT count(*)::text FROM business_events
+             WHERE actor_id = $2 AND idempotency_key = $3) AS events`,
+        [storeId, customerId, idempotencyKey],
+      );
+      expect(after.rows[0]).toEqual({ ...before.rows[0], events: "1" });
+    } finally {
+      await database.pool.query(
+        "UPDATE resources SET active = true WHERE id = $1",
+        [selected.roomResourceId],
+      );
+    }
+  });
+
+  it("allows only one hold when different therapists compete for one facility", async () => {
+    const competingToken = `booking-competing-customer-${suffix}`;
+    const competingCustomer = await database.pool.query<{ id: string }>(
+      `INSERT INTO customers (display_name) VALUES ($1) RETURNING id`,
+      [`场地竞争测试顾客-${suffix}`],
+    );
+    const competingCustomerId = competingCustomer.rows[0]!.id;
+    await database.pool.query(
+      `INSERT INTO customer_sessions (customer_id, token_hash, expires_at)
+       VALUES ($1, $2, $3)`,
+      [
+        competingCustomerId,
+        hashToken(competingToken),
+        new Date(Date.now() + 3_600_000),
+      ],
+    );
+    const startAt = new Date(Date.now() + 20 * 60_000);
+    const keys = [`facility-a-${suffix}`, `facility-b-${suffix}`];
+    const createdReceptionIds: string[] = [];
+
+    await database.pool.query(
+      "UPDATE resources SET active = false WHERE id = $1",
+      [secondRoomId],
+    );
+    try {
+      const candidates = await Promise.all([
+        app.inject({
+          method: "POST",
+          url: "/api/v1/availability/queries",
+          headers: { authorization: `Bearer ${customerToken}` },
+          payload: {
+            storeId,
+            assignments: [
+              {
+                clientGuestId: "facility-a",
+                serviceItemId: nearServiceItemId,
+                therapistResourceId: therapistId,
+                serviceStartAt: startAt.toISOString(),
+              },
+            ],
+          },
+        }),
+        app.inject({
+          method: "POST",
+          url: "/api/v1/availability/queries",
+          headers: { authorization: `Bearer ${competingToken}` },
+          payload: {
+            storeId,
+            assignments: [
+              {
+                clientGuestId: "facility-b",
+                serviceItemId: nearServiceItemId,
+                therapistResourceId: secondTherapistId,
+                serviceStartAt: startAt.toISOString(),
+              },
+            ],
+          },
+        }),
+      ]);
+      expect(candidates.map((item) => item.statusCode)).toEqual([200, 200]);
+      for (const response of candidates) {
+        const selected = verifyBookingCandidate(
+          response.json().candidateToken,
+          config.bookingTokenSecret,
+        ).assignments[0]!;
+        expect(selected.roomResourceId).toBe(roomId);
+        expect(selected.bedResourceId).toBe(bedId);
+      }
+
+      const responses = await Promise.all(
+        candidates.map((candidateResponse, index) =>
+          app.inject({
+            method: "POST",
+            url: "/api/v1/receptions",
+            headers: {
+              authorization: `Bearer ${index === 0 ? customerToken : competingToken}`,
+              "idempotency-key": keys[index]!,
+            },
+            payload: {
+              candidateToken: candidateResponse.json().candidateToken,
+            },
+          }),
+        ),
+      );
+      expect(responses.map((item) => item.statusCode).sort()).toEqual([
+        201, 409,
+      ]);
+      const loser = responses.find((item) => item.statusCode === 409)!;
+      expect(loser.json().code).toBe("CANDIDATE_CHANGED");
+      responses
+        .filter((item) => item.statusCode === 201)
+        .forEach((item) => createdReceptionIds.push(item.json().receptionId));
+    } finally {
+      await database.pool.query(
+        "UPDATE resources SET active = true WHERE id = $1",
+        [secondRoomId],
+      );
+      if (createdReceptionIds.length > 0) {
+        await database.pool.query(
+          "DELETE FROM resource_allocations WHERE reception_id = ANY($1::uuid[])",
+          [createdReceptionIds],
+        );
+        await database.pool.query(
+          "DELETE FROM reception_guests WHERE reception_id = ANY($1::uuid[])",
+          [createdReceptionIds],
+        );
+        await database.pool.query(
+          "DELETE FROM receptions WHERE id = ANY($1::uuid[])",
+          [createdReceptionIds],
+        );
+      }
+      await database.pool.query(
+        "DELETE FROM business_events WHERE idempotency_key = ANY($1::text[])",
+        [keys],
+      );
+      await database.pool.query(
+        "DELETE FROM customer_sessions WHERE customer_id = $1",
+        [competingCustomerId],
+      );
+      await database.pool.query("DELETE FROM customers WHERE id = $1", [
+        competingCustomerId,
+      ]);
+    }
   });
 
   it("allows only one of two concurrent holds for the same resources", async () => {
@@ -724,6 +1123,195 @@ describe.runIf(hasDatabase)("booking hold integration", () => {
     );
   });
 
+  it("lists and reads only the signed-in customer's current booking status", async () => {
+    const list = await app.inject({
+      method: "GET",
+      url: "/api/v1/receptions",
+      headers: { authorization: `Bearer ${customerToken}` },
+    });
+
+    expect(list.statusCode, list.body).toBe(200);
+    expect(list.json()).toMatchObject({
+      serverNow: expect.any(String),
+      items: [
+        expect.objectContaining({
+          receptionId: firstReceptionId,
+          storeId,
+          state: "pending",
+          statusReason: null,
+          confirmationDeadline: expect.any(String),
+          quoteCents: "9500",
+          guestCount: 1,
+          serviceItemName: expect.any(String),
+          therapistName: expect.any(String),
+          serviceStartAt: slotStart.toISOString(),
+        }),
+      ],
+      nextCursor: null,
+    });
+    expect(list.body).not.toContain(roomId);
+    expect(list.body).not.toContain(bedId);
+
+    const detail = await app.inject({
+      method: "GET",
+      url: `/api/v1/receptions/${firstReceptionId}`,
+      headers: { authorization: `Bearer ${customerToken}` },
+    });
+    expect(detail.statusCode, detail.body).toBe(200);
+    expect(detail.json()).toMatchObject({
+      receptionId: firstReceptionId,
+      state: "pending",
+      guests: [
+        {
+          id: expect.any(String),
+          clientGuestId: "guest-1",
+          serviceItemName: expect.any(String),
+          therapistName: expect.any(String),
+          serviceStartAt: slotStart.toISOString(),
+          serviceEndAt: new Date(
+            slotStart.getTime() + 60 * 60_000,
+          ).toISOString(),
+          durationMinutes: 60,
+          quoteCents: "9500",
+        },
+      ],
+    });
+
+    const outsiderToken = `booking-outsider-${suffix}`;
+    const outsider = await database.pool.query<{ id: string }>(
+      `INSERT INTO customers (display_name) VALUES ($1) RETURNING id`,
+      [`其他预约顾客-${suffix}`],
+    );
+    const outsiderId = outsider.rows[0]!.id;
+    try {
+      await database.pool.query(
+        `INSERT INTO customer_sessions (customer_id, token_hash, expires_at)
+         VALUES ($1, $2, $3)`,
+        [
+          outsiderId,
+          hashToken(outsiderToken),
+          new Date(Date.now() + 3_600_000),
+        ],
+      );
+      const hidden = await app.inject({
+        method: "GET",
+        url: `/api/v1/receptions/${firstReceptionId}`,
+        headers: { authorization: `Bearer ${outsiderToken}` },
+      });
+      expect(hidden.statusCode).toBe(404);
+      expect(hidden.json().code).toBe("RECEPTION_NOT_FOUND");
+    } finally {
+      await database.pool.query(
+        "DELETE FROM customer_sessions WHERE customer_id = $1",
+        [outsiderId],
+      );
+      await database.pool.query("DELETE FROM customers WHERE id = $1", [
+        outsiderId,
+      ]);
+    }
+  });
+
+  it("reports a timed-out pending booking as expired", async () => {
+    const deadline = await database.pool.query<{
+      confirmation_deadline: Date;
+    }>(
+      `UPDATE receptions
+          SET confirmation_deadline = clock_timestamp() - interval '1 second'
+        WHERE id = $1
+        RETURNING confirmation_deadline`,
+      [firstReceptionId],
+    );
+    try {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/receptions/${firstReceptionId}`,
+        headers: { authorization: `Bearer ${customerToken}` },
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json()).toMatchObject({
+        state: "expired",
+        statusReason: "confirmation_timeout",
+        confirmationDeadline: null,
+      });
+    } finally {
+      await database.pool.query(
+        `UPDATE receptions
+            SET confirmation_deadline = $2
+          WHERE id = $1`,
+        [
+          firstReceptionId,
+          new Date(deadline.rows[0]!.confirmation_deadline.getTime() + 600_000),
+        ],
+      );
+    }
+  });
+
+  it("reports confirmed and therapist-leave invalidated results", async () => {
+    try {
+      await database.pool.query(
+        `UPDATE receptions
+            SET state = 'confirmed', confirmation_deadline = NULL
+          WHERE id = $1`,
+        [firstReceptionId],
+      );
+      await database.pool.query(
+        `UPDATE resource_allocations
+            SET allocation_state = 'confirmed', expires_at = NULL
+          WHERE reception_id = $1`,
+        [firstReceptionId],
+      );
+      const confirmed = await app.inject({
+        method: "GET",
+        url: `/api/v1/receptions/${firstReceptionId}`,
+        headers: { authorization: `Bearer ${customerToken}` },
+      });
+      expect(confirmed.statusCode, confirmed.body).toBe(200);
+      expect(confirmed.json()).toMatchObject({
+        state: "confirmed",
+        statusReason: null,
+        confirmationDeadline: null,
+      });
+
+      await database.pool.query(
+        `UPDATE receptions SET state = 'invalidated' WHERE id = $1`,
+        [firstReceptionId],
+      );
+      await database.pool.query(
+        `UPDATE resource_allocations
+            SET allocation_state = 'inactive',
+                inactive_reason = 'resource_restriction'
+          WHERE reception_id = $1`,
+        [firstReceptionId],
+      );
+      const invalidated = await app.inject({
+        method: "GET",
+        url: `/api/v1/receptions/${firstReceptionId}`,
+        headers: { authorization: `Bearer ${customerToken}` },
+      });
+      expect(invalidated.statusCode, invalidated.body).toBe(200);
+      expect(invalidated.json()).toMatchObject({
+        state: "invalidated",
+        statusReason: "therapist_leave",
+        confirmationDeadline: null,
+      });
+    } finally {
+      const deadline = new Date(Date.now() + 10 * 60_000);
+      await database.pool.query(
+        `UPDATE receptions
+            SET state = 'pending', confirmation_deadline = $2
+          WHERE id = $1`,
+        [firstReceptionId, deadline],
+      );
+      await database.pool.query(
+        `UPDATE resource_allocations
+            SET allocation_state = 'held', expires_at = $2,
+                inactive_reason = NULL
+          WHERE reception_id = $1`,
+        [firstReceptionId, deadline],
+      );
+    }
+  });
+
   it("replays the same response for the same idempotency key", async () => {
     const response = await app.inject({
       method: "POST",
@@ -737,6 +1325,181 @@ describe.runIf(hasDatabase)("booking hold integration", () => {
 
     expect(response.statusCode).toBe(201);
     expect(response.json().receptionId).toBe(firstReceptionId);
+  });
+
+  it("checks the idempotency record before decoding the candidate", async () => {
+    const invalidCandidate = "invalid-candidate".padEnd(32, "x");
+    const mismatched = await app.inject({
+      method: "POST",
+      url: "/api/v1/receptions",
+      headers: {
+        authorization: `Bearer ${customerToken}`,
+        "idempotency-key": successfulIdempotencyKey,
+      },
+      payload: { candidateToken: invalidCandidate },
+    });
+    expect(mismatched.statusCode, mismatched.body).toBe(409);
+    expect(mismatched.json().code).toBe("IDEMPOTENCY_KEY_REUSED");
+
+    const rotatedApp = await buildApp({
+      config: {
+        ...config,
+        bookingTokenSecret: "rotated-booking-token-secret-000000000000",
+      },
+      database,
+      logger: false,
+    });
+    try {
+      const replayed = await rotatedApp.inject({
+        method: "POST",
+        url: "/api/v1/receptions",
+        headers: {
+          authorization: `Bearer ${customerToken}`,
+          "idempotency-key": successfulIdempotencyKey,
+        },
+        payload: { candidateToken },
+      });
+      expect(replayed.statusCode, replayed.body).toBe(201);
+      expect(replayed.json().receptionId).toBe(firstReceptionId);
+    } finally {
+      await rotatedApp.close();
+    }
+  });
+
+  it("lets the original customer replay success after signing in again", async () => {
+    const renewedToken = `booking-customer-renewed-${suffix}`;
+    await database.pool.query(
+      `INSERT INTO customer_sessions (customer_id, token_hash, expires_at)
+       VALUES ($1, $2, $3)`,
+      [customerId, hashToken(renewedToken), new Date(Date.now() + 3_600_000)],
+    );
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/receptions",
+        headers: {
+          authorization: `Bearer ${renewedToken}`,
+          "idempotency-key": successfulIdempotencyKey,
+        },
+        payload: { candidateToken },
+      });
+      expect(response.statusCode, response.body).toBe(201);
+      expect(response.json().receptionId).toBe(firstReceptionId);
+    } finally {
+      await database.pool.query(
+        "DELETE FROM customer_sessions WHERE token_hash = $1",
+        [hashToken(renewedToken)],
+      );
+    }
+  });
+
+  it("replays success across rule changes but rejects a new stale candidate", async () => {
+    const freshAvailability = await queryAvailability(
+      new Date(slotStart.getTime() + 5 * 60 * 60_000),
+    );
+    expect(freshAvailability.statusCode, freshAvailability.body).toBe(200);
+    expect(freshAvailability.json().available).toBe(true);
+    const freshToken = freshAvailability.json().candidateToken as string;
+    const rejectedKey = `changed-new-${suffix}`;
+    const before = await database.pool.query<{
+      receptions: string;
+      allocations: string;
+    }>(
+      `SELECT
+         (SELECT count(*)::text FROM receptions WHERE store_id = $1) AS receptions,
+         (SELECT count(*)::text FROM resource_allocations WHERE store_id = $1) AS allocations`,
+      [storeId],
+    );
+
+    await database.pool.query(
+      `UPDATE service_items
+          SET price_cents = price_cents + 1,
+              config_version = config_version + 1
+        WHERE id = $1`,
+      [serviceItemId],
+    );
+    try {
+      const replay = await app.inject({
+        method: "POST",
+        url: "/api/v1/receptions",
+        headers: {
+          authorization: `Bearer ${customerToken}`,
+          "idempotency-key": successfulIdempotencyKey,
+        },
+        payload: { candidateToken },
+      });
+      expect(replay.statusCode, replay.body).toBe(201);
+      expect(replay.json().receptionId).toBe(firstReceptionId);
+
+      const changedParameters = signBookingCandidate(
+        {
+          ...verifyBookingCandidate(candidateToken, config.bookingTokenSecret),
+          quoteCents: 9_501,
+        },
+        config.bookingTokenSecret,
+      );
+      const conflict = await app.inject({
+        method: "POST",
+        url: "/api/v1/receptions",
+        headers: {
+          authorization: `Bearer ${customerToken}`,
+          "idempotency-key": successfulIdempotencyKey,
+        },
+        payload: { candidateToken: changedParameters },
+      });
+      expect(conflict.statusCode, conflict.body).toBe(409);
+      expect(conflict.json().code).toBe("IDEMPOTENCY_KEY_REUSED");
+
+      const rejected = await app.inject({
+        method: "POST",
+        url: "/api/v1/receptions",
+        headers: {
+          authorization: `Bearer ${customerToken}`,
+          "idempotency-key": rejectedKey,
+        },
+        payload: { candidateToken: freshToken },
+      });
+      expect(rejected.statusCode, rejected.body).toBe(409);
+      expect(rejected.json().code).toBe("CANDIDATE_CHANGED");
+
+      const after = await database.pool.query<{
+        receptions: string;
+        allocations: string;
+        rejected_events: string;
+      }>(
+        `SELECT
+           (SELECT count(*)::text FROM receptions WHERE store_id = $1) AS receptions,
+           (SELECT count(*)::text FROM resource_allocations WHERE store_id = $1) AS allocations,
+           (SELECT count(*)::text
+              FROM business_events
+             WHERE actor_id = $2 AND idempotency_key = $3) AS rejected_events`,
+        [storeId, customerId, rejectedKey],
+      );
+      expect(after.rows[0]).toEqual({
+        ...before.rows[0],
+        rejected_events: "1",
+      });
+    } finally {
+      await database.pool.query(
+        `UPDATE service_items
+            SET price_cents = price_cents - 1,
+                config_version = config_version - 1
+          WHERE id = $1`,
+        [serviceItemId],
+      );
+    }
+
+    const replayedFailure = await app.inject({
+      method: "POST",
+      url: "/api/v1/receptions",
+      headers: {
+        authorization: `Bearer ${customerToken}`,
+        "idempotency-key": rejectedKey,
+      },
+      payload: { candidateToken: freshToken },
+    });
+    expect(replayedFailure.statusCode).toBe(409);
+    expect(replayedFailure.json().code).toBe("CANDIDATE_CHANGED");
   });
 
   it("replays a completed idempotent response after its candidate expires", async () => {
@@ -854,6 +1617,7 @@ describe.runIf(hasDatabase)("booking hold integration", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       available: false,
+      reasonCode: "RESOURCE_UNAVAILABLE",
       reason: "所选时间或资源当前不可用",
     });
   });

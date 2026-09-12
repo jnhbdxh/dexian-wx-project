@@ -45,6 +45,9 @@ function staffHeaders(
     "x-csrf-token": csrf,
     "idempotency-key": idempotencyKey,
     "if-match": `"${version}"`,
+    "x-initiating-staff-user-id":
+      token === deniedToken ? deniedStaffId : allowedStaffId,
+    "x-initiating-store-id": storeId,
   };
 }
 
@@ -442,6 +445,63 @@ describe.runIf(hasDatabase)("booking confirmation integration", () => {
     expect(Date.parse(response.json().overview.serverNow)).not.toBeNaN();
   });
 
+  it("queries a service date with state and therapist filters", async () => {
+    const { receptionId, startAt } = await createPendingReception();
+    const localDate = await database.pool.query<{ value: string }>(
+      "SELECT ($1::timestamptz AT TIME ZONE 'Asia/Shanghai')::date::text AS value",
+      [startAt],
+    );
+    const response = await app.inject({
+      method: "GET",
+      url:
+        "/api/v1/admin/receptions?serviceDate=" +
+        localDate.rows[0]!.value +
+        "&state=pending&therapistId=" +
+        therapistId,
+      headers: { cookie: `dexian_admin_session=${allowedToken}` },
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json()).toMatchObject({
+      canConfirm: true,
+      total: expect.any(Number),
+    });
+    const item = response
+      .json()
+      .items.find(
+        (candidate: { receptionId: string }) =>
+          candidate.receptionId === receptionId,
+      );
+    expect(item).toMatchObject({
+      receptionId,
+      customerName: `确认测试顾客-${suffix}`,
+      state: "pending",
+      quoteCents: "9500",
+      conflicts: [],
+      guests: [
+        {
+          serviceItemName: `确认测试项目-${suffix}`,
+          therapistName: `确认测试美容师-${suffix}`,
+          roomName: `确认测试房间-${suffix}`,
+          bedName: `确认测试床位-${suffix}`,
+          quoteCents: "9500",
+        },
+      ],
+    });
+
+    const staleCursor = await app.inject({
+      method: "GET",
+      url:
+        "/api/v1/admin/receptions?serviceDate=" +
+        localDate.rows[0]!.value +
+        "&state=confirmed&after=" +
+        receptionId,
+      headers: { cookie: `dexian_admin_session=${allowedToken}` },
+    });
+    expect(staleCursor.statusCode).toBe(400);
+    expect(staleCursor.json().code).toBe("INVALID_CURSOR");
+  });
+
   it("requires CSRF and the confirmation permission", async () => {
     const { receptionId } = await createPendingReception();
     const invalidCsrf = await app.inject({
@@ -464,6 +524,45 @@ describe.runIf(hasDatabase)("booking confirmation integration", () => {
     });
   });
 
+  it("rejects a changed initiating employee or store before idempotency", async () => {
+    const { receptionId } = await createPendingReception();
+    const staffKey = `changed-staff-${suffix}`;
+    const storeKey = `changed-store-${suffix}`;
+    const changedStaff = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/receptions/${receptionId}/confirm`,
+      headers: {
+        ...staffHeaders(allowedToken, allowedCsrf, staffKey),
+        "x-initiating-staff-user-id": deniedStaffId,
+      },
+    });
+    const changedStore = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/receptions/${receptionId}/confirm`,
+      headers: {
+        ...staffHeaders(allowedToken, allowedCsrf, storeKey),
+        "x-initiating-store-id": randomUUID(),
+      },
+    });
+
+    expect(changedStaff.statusCode).toBe(409);
+    expect(changedStaff.json().code).toBe("RECEPTION_CONFIRM_IDENTITY_CHANGED");
+    expect(changedStore.statusCode).toBe(409);
+    expect(changedStore.json().code).toBe("RECEPTION_CONFIRM_IDENTITY_CHANGED");
+    const residue = await database.pool.query<{
+      event_count: string;
+      state: string;
+    }>(
+      `SELECT reception.state,
+              (SELECT count(*)::text FROM business_events
+                WHERE idempotency_key = ANY($2::text[])) AS event_count
+         FROM receptions AS reception
+        WHERE reception.id = $1`,
+      [receptionId, [staffKey, storeKey]],
+    );
+    expect(residue.rows[0]).toEqual({ event_count: "0", state: "pending" });
+  });
+
   it("requires version and idempotency headers", async () => {
     const { receptionId } = await createPendingReception();
     const cookie = `dexian_admin_session=${allowedToken}; dexian_admin_csrf=${allowedCsrf}`;
@@ -474,6 +573,8 @@ describe.runIf(hasDatabase)("booking confirmation integration", () => {
         cookie,
         "x-csrf-token": allowedCsrf,
         "idempotency-key": `missing-version-${suffix}`,
+        "x-initiating-staff-user-id": allowedStaffId,
+        "x-initiating-store-id": storeId,
       },
     });
     expect(missingVersion.statusCode).toBe(400);
@@ -486,6 +587,8 @@ describe.runIf(hasDatabase)("booking confirmation integration", () => {
         cookie,
         "x-csrf-token": allowedCsrf,
         "if-match": '"1"',
+        "x-initiating-staff-user-id": allowedStaffId,
+        "x-initiating-store-id": storeId,
       },
     });
     expect(missingIdempotency.statusCode).toBe(400);

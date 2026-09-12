@@ -70,6 +70,8 @@ function confirmHeaders(idempotencyKey = `confirm-${randomUUID()}`) {
     "x-csrf-token": allowedCsrf,
     "idempotency-key": idempotencyKey,
     "if-match": '"1"',
+    "x-initiating-staff-user-id": allowedStaffId,
+    "x-initiating-store-id": storeId,
   };
 }
 
@@ -649,8 +651,6 @@ describe.runIf(hasDatabase)("scheduling leave integration", () => {
             clientGuestId: "leave-chain-guest",
             serviceItemId,
             therapistResourceId: therapistId,
-            roomResourceId: roomId,
-            bedResourceId: bedId,
             serviceStartAt: leaveStart.toISOString(),
           },
         ],
@@ -659,6 +659,7 @@ describe.runIf(hasDatabase)("scheduling leave integration", () => {
     expect(availability.statusCode, availability.body).toBe(200);
     expect(availability.json()).toEqual({
       available: false,
+      reasonCode: "RESOURCE_UNAVAILABLE",
       reason: "所选时间或资源当前不可用",
     });
   });
